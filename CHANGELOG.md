@@ -2,6 +2,31 @@
 
 ---
 
+## Session 26 — 2026-05-13 — Deployment + File Renames
+
+### Deployment
+- Game is now live: static files on GitHub Pages (`https://marijuethampheroin.github.io/car-thief-online/`), Node/WebSocket server on Railway (`https://car-thief-online-production.up.railway.app`)
+- `server.js` — `SERVICE_ACCOUNT_KEY` env var replaces `require('./serviceAccountKey.json')`; falls back to local file for dev
+- `server.js` — `PORT` reads from `process.env.PORT || 8080` for Railway compatibility
+- `.gitignore` created — excludes `serviceAccountKey.json`, `node_modules`, archives, spec docs, utility scripts, `backup/`, `toolkit_b/`, `ct5 bank robbery/`
+
+### File Renames
+- `start.html` → `index.html` (multiplayer entry point)
+- `main.html` → `classic.html` (singleplayer screen, kept for reference)
+- `index.html` (old singleplayer entry) removed from active use
+
+### Changed — WS URLs
+- `index.html` (×2) + `game.html` (×1) — WS URLs now auto-switch: `ws://localhost:8080` locally, `wss://car-thief-online-production.up.railway.app` when deployed
+
+### Changed — Redirects
+- All files updated: `start.html` → `index.html`, `lobby.html` → `index.html`, `main.html` → `game.html` throughout `auth.html`, `classic.html`, `crime.html`, `drive.html`, `game.html`, `index.html`, `main.html`, `sw.js`
+- `sw.js` PRECACHE list updated to `classic.html` in place of `main.html`
+
+### Fixed — GitHub Pages path compatibility
+- `manifest.json` and `sw.js` references changed from absolute (`/manifest.json`) to relative (`manifest.json`) in `index.html` and `game.html` to work under the `/car-thief-online/` subfolder
+
+---
+
 ## Session 23 — [2026-05-09] start.html + Live Room List
 
 ### Created — `start.html`

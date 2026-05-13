@@ -285,6 +285,22 @@ function getValidActions(locType, ss, playerGs) {
     acts.push('case_the_area');
     acts.push('flee');
 
+  } else if (locType === 'bank') {
+    // ── BANK ROBBERY ──
+    if (!ss.teller_approached) {
+      acts.push('bank_give_note');
+      if (hasGun) acts.push('bank_announce');
+    } else {
+      if (!ss.teller_cash_taken) acts.push('bank_demand_teller');
+    }
+    if (ss.teller_approached && hasGun) {
+      if (!ss.manager_found)                         acts.push('bank_find_manager');
+      if (ss.manager_found && !ss.manager_complied)  acts.push('bank_lead_to_vault');
+      if (ss.manager_complied && !ss.vault_open)     acts.push('bank_demand_vault');
+      if (ss.vault_open && ss.bags_remaining > 0)    acts.push('bank_fill_bag');
+    }
+    acts.push('bank_leave');
+
   } else {
     // ── COVERT STEAL (residential / busy) ──
     if (!ss.doorOpen) {
@@ -357,7 +373,7 @@ activeCrew.slice(0,5).forEach((c,i)=>{
   sl.title=c.name;
   sl.addEventListener("click",()=>renderCrimeLeft({type:"contact",data:c}));
 });
-document.getElementById("yourTargetSlots").querySelector(".rp-slot").addEventListener("click",()=>renderCrimeLeft({type:"vehicle",data:vehData}));
+document.getElementById("yourTargetSlots").querySelector(".rp-slot").addEventListener("click",()=>{ if(vehData) renderCrimeLeft({type:"vehicle",data:vehData}); });
 function renderCrimeLeft(ctx){
   const lp=document.getElementById("crimeLeft");
   if(ctx.type==="vehicle")lp.innerHTML=renderVehicleView(ctx.data);
@@ -455,6 +471,11 @@ function endScene(result){
     }
     setTimeout(()=>window.location.href="game.html",1200);
   }
+  else if(result==="bank_success"){
+    logMsg("You walk out of the bank. Time to drive.","good");
+    saveState(gs);
+    setTimeout(()=>window.location.href="game.html",1800);
+  }
 }
 function doTurn(){
   if(sceneOver||mpPending)return;
@@ -497,6 +518,7 @@ function _applyTurnResult(outcome){
   if(!sceneOver){
     if(outcome.progress==="success") startDriveAway();
     else if(outcome.progress==="fled") endScene("fled");
+    else if(outcome.progress==="bank_leave") startBankExit();
     else buildActionBar(); // rebuild after every non-terminal turn
   }
   if(!sceneOver){turnNum++;}
@@ -512,6 +534,22 @@ function startDriveAway(){
   const finalDelay = chase.msgs[chase.msgs.length - 1].delay + 800;
   if (chase.result === 'escaped') {
     setTimeout(() => endScene('success'), finalDelay);
+  } else {
+    setTimeout(() => endScene('busted'), finalDelay);
+  }
+}
+function startBankExit(){
+  sceneOver = true;
+  document.getElementById("turnBtn").disabled = true;
+  document.querySelectorAll(".act-icon").forEach(b => b.style.opacity = "0.4");
+  // Reuse drive-away logic — bank getaway car has generic speed
+  const chase = resolveDriveAway(gs, policeLevel, 70);
+  chase.msgs.forEach(m => {
+    setTimeout(() => logMsg(m.text, m.cls), m.delay);
+  });
+  const finalDelay = chase.msgs[chase.msgs.length - 1].delay + 800;
+  if (chase.result === 'escaped') {
+    setTimeout(() => endScene('bank_success'), finalDelay);
   } else {
     setTimeout(() => endScene('busted'), finalDelay);
   }

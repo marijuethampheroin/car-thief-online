@@ -1,6 +1,6 @@
 # Car Thief Online — Development Status
 
-_Last updated: 2026-05-13 (session 25)_
+_Last updated: 2026-05-13 (session 26)_
 
 ---
 
@@ -19,9 +19,8 @@ The game ends when a player flies to the airport. Highest score (cash minus debt
 
 | File | Status | Description |
 |---|---|---|
-| `start.html` | ✅ Done | Multiplayer entry — Browse/Create/Solo tabs; live room list; auto-join via `?join=CODE`; routes to `game.html` |
-| `index.html` | ✅ Done | Singleplayer entry — name, portrait, profession, starting city picker; routes to `main.html` |
-| `main.html` | ✅ Done | Singleplayer main screen — Police Readiness bar; crew portrait click → left panel stats; vehicle panel dividers fixed; portrait CSS fixed |
+| `index.html` | ✅ Done | Multiplayer entry (was `start.html`) — Browse/Create/Solo tabs; live room list; auto-join via `?join=CODE`; routes to `game.html` |
+| `classic.html` | ✅ Done | Singleplayer entry+main (was `index.html`+`main.html`) — name, portrait, profession, city picker; routes to `game.html` |
 | `game.html` | ✅ Done | Multiplayer main screen (renamed from `main_v2.html`) |
 | `crime.html` | ✅ Done | Crime scene — crew-aware action resolution; active team slots show crew portraits; `renderContactView()` on slot click |
 | `race.html` | ✅ Done | Race scene screen (pink-slip one-on-one) |
@@ -39,7 +38,16 @@ The game ends when a player flies to the airport. Highest score (cash minus debt
 
 ---
 
-## Screens
+## Deployment
+
+| Service | Status | Notes |
+|---|---|---|
+| GitHub Pages | ✅ Live | `https://marijuethampheroin.github.io/car-thief-online/` — static files |
+| Railway | ✅ Live | `https://car-thief-online-production.up.railway.app` — Node/WebSocket server |
+| Firebase Auth | ✅ Live | Email/password login; token passed to server on WS connect |
+
+---
+
 
 ### index.html — Start New Game
 | Feature | Status | Notes |
@@ -143,14 +151,19 @@ The game ends when a player flies to the airport. Highest score (cash minus debt
 | Feature | Status | Notes |
 |---|---|---|
 | server.js + logic.js | ✅ | |
-| lobby.html wiring | ✅ | |
-| main.html wiring | ✅ | |
-| crime.html wiring | ✅ | |
-| race.html wiring | ❌ | |
-| arrested.html wiring | ❌ | |
+| Deployment (GitHub Pages + Railway) | ✅ | Live and reachable |
+| index.html (room browser/create) | ✅ | |
+| Auth flow | ✅ | |
+| Room create/join/start | ✅ | Two players tested successfully |
+| Shared city map / location pools | ❌ | Each player currently sees independent pools; needs server-authoritative shared state |
+| Shared day timer | ⚠️ | Timer exists in server.js but day advancement not pushing to clients reliably |
+| crime.html wiring | ✅ | do_action, arrest, steal_success wired |
+| steal_claim conflict resolution | ⚠️ | pendingClaims exists in server but not fully tested |
+| race.html wiring | ❌ | race_challenge / race_turn not yet wired |
+| arrested.html wiring | ❌ | arrest_result navigation not confirmed |
 | store buy_item message | ❌ | |
 | sell_vehicle message | ❌ | |
-| End-to-end testing | ❌ | |
+| End-to-end testing | ⚠️ | Room start works; gameplay sync not tested |
 
 ---
 
@@ -186,14 +199,15 @@ The game ends when a player flies to the airport. Highest score (cash minus debt
 
 ## Backlog / To-Do
 
+- **Shared city map / location pools** — highest priority; server needs to own location pool state and push it to all clients on game start and after each steal
+- **Shared day timer** — verify `day_advanced` message is reaching clients and updating HUD
 - race.html and arrested.html MP WebSocket wiring
 - store buy_item and sell_vehicle server messages
+- steal_claim conflict resolution end-to-end testing
 - Bank loan + rob tabs; pawn shop not started
 - Win condition (end game trigger) — design TBD
 - GPS tracker foil sequence in crime.html
-- Jailed status for player (arrested.html handles separately — may unify)
-- Phase 2 — Drug Dealing
+- Phase 2 — Drug Dealing (backend done; UI partial)
 - Phase 3 — Prostitution
 - Phase 4 — Polish (rename Acting → Charisma; wanted star redesign)
 - BMP → PNG conversion for production
-- End-to-end multiplayer flow not yet tested
