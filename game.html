@@ -894,10 +894,8 @@ function renderBankPanel() {
 }
 
 function goBankRob() {
-  // TODO: navigate to crime.html with bank robbery context
-  const msgEl = document.getElementById('msgText');
-  msgEl.innerHTML += `<p>Bank robbery — coming soon.</p>`;
-  msgEl.scrollTop = msgEl.scrollHeight;
+  sessionStorage.setItem('targetLocation', JSON.stringify({ type: 'bank', label: 'Bank' }));
+  window.location.href = 'crime.html';
 }
 
 // ── Sub-renderer: Airport ─────────────────────────────────────────────────────
