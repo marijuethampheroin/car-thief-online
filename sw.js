@@ -7,7 +7,7 @@ const CACHE = 'cto-v1';
 const PRECACHE = [
   '/',
   '/index.html',
-  '/main.html',
+  '/classic.html',
   '/game.html',
   '/styles.css',
   '/styles_v2.css',

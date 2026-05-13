@@ -207,7 +207,7 @@
           sessionStorage.setItem('playerName', doc.data().displayName);
         }
         const params = new URLSearchParams(location.search);
-        const then   = params.get('then') || 'start.html';
+        const then   = params.get('then') || 'index.html';
         const join   = params.get('join');
         window.location.href = then + (join ? '?join=' + join : '');
       } catch (err) {
@@ -239,7 +239,7 @@
         sessionStorage.setItem('fbUid',       cred.user.uid);
         sessionStorage.setItem('playerName',  name);
         const params = new URLSearchParams(location.search);
-        const then   = params.get('then') || 'start.html';
+        const then   = params.get('then') || 'index.html';
         const join   = params.get('join');
         window.location.href = then + (join ? '?join=' + join : '');
       } catch (err) {

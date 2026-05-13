@@ -427,7 +427,7 @@ function joinByCode() {
 function joinRoom(code) {
   const token = sessionStorage.getItem('fbToken');
   if (!token) {
-    window.location.href = `auth.html?then=start.html&join=${code}`;
+    window.location.href = `auth.html?then=index.html&join=${code}`;
     return;
   }
   stopBrowsing();
@@ -439,7 +439,7 @@ function joinRoom(code) {
 // ---------------------------------------------------------------------------
 function doCreate() {
   const token = sessionStorage.getItem('fbToken');
-  if (!token) { window.location.href = 'auth.html?then=start.html'; return; }
+  if (!token) { window.location.href = 'auth.html?then=index.html'; return; }
   const ch = getCharacter();
   connectWs(() => send({
     type:     'create_room',
