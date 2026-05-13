@@ -1,0 +1,283 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Car Thief Online — Sign In</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .auth-window {
+      width: 360px;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .auth-body {
+      padding: 24px 28px 28px;
+      background: var(--bg-main);
+    }
+    .auth-tabs {
+      display: flex;
+      margin-bottom: 20px;
+      border-bottom: 2px solid var(--border-dark);
+    }
+    .auth-tab {
+      flex: 1;
+      padding: 8px;
+      background: none;
+      border: none;
+      font-family: 'Oswald', sans-serif;
+      font-size: 14px;
+      letter-spacing: 0.5px;
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+    .auth-tab.active {
+      color: var(--accent-bright);
+      border-bottom: 2px solid var(--accent-bright);
+      margin-bottom: -2px;
+    }
+    .auth-field {
+      margin-bottom: 14px;
+    }
+    .auth-field label {
+      display: block;
+      font-family: 'Oswald', sans-serif;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+    .auth-field input {
+      width: 100%;
+      padding: 8px 10px;
+      background: var(--bg-dark);
+      border: 1px solid var(--border-dark);
+      border-radius: 2px;
+      color: var(--text-light);
+      font-family: 'Special Elite', serif;
+      font-size: 14px;
+      box-shadow: var(--inset);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .auth-field input:focus {
+      border-color: var(--accent);
+    }
+    .auth-btn {
+      width: 100%;
+      margin-top: 6px;
+      padding: 10px;
+      background: var(--accent);
+      border: 1px solid var(--border-dark);
+      border-radius: 2px;
+      color: var(--text-light);
+      font-family: 'Oswald', sans-serif;
+      font-size: 15px;
+      letter-spacing: 1px;
+      cursor: pointer;
+      box-shadow: var(--raised);
+      transition: background 0.15s;
+    }
+    .auth-btn:hover { background: var(--accent-bright); }
+    .auth-btn:disabled { opacity: 0.5; cursor: default; }
+    .auth-msg {
+      margin-top: 12px;
+      font-size: 12px;
+      text-align: center;
+      min-height: 18px;
+      color: var(--bar-red);
+    }
+    .auth-msg.success { color: var(--bar-green); }
+    .forgot-link {
+      display: block;
+      text-align: right;
+      font-size: 11px;
+      color: var(--text-dim);
+      cursor: pointer;
+      margin-top: -8px;
+      margin-bottom: 10px;
+      text-decoration: underline;
+    }
+    .forgot-link:hover { color: var(--accent-bright); }
+  </style>
+<link rel="manifest" href="/manifest.json">
+<script>if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');</script></head>
+<body>
+  <div class="window auth-window">
+    <div class="window-titlebar">
+      <span>CAR THIEF ONLINE</span>
+      <div class="win-btns">
+        <div class="win-btn"></div>
+        <div class="win-btn"></div>
+        <div class="win-btn"></div>
+      </div>
+    </div>
+    <div class="auth-body">
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tab-login" onclick="switchTab('login')">SIGN IN</button>
+        <button class="auth-tab" id="tab-register" onclick="switchTab('register')">REGISTER</button>
+      </div>
+
+      <!-- Login -->
+      <div id="form-login">
+        <div class="auth-field">
+          <label>EMAIL</label>
+          <input type="email" id="login-email" placeholder="you@example.com">
+        </div>
+        <div class="auth-field">
+          <label>PASSWORD</label>
+          <input type="password" id="login-password" placeholder="••••••••">
+        </div>
+        <span class="forgot-link" onclick="forgotPassword()">Forgot password?</span>
+        <button class="auth-btn" id="btn-login" onclick="doLogin()">SIGN IN</button>
+      </div>
+
+      <!-- Register -->
+      <div id="form-register" style="display:none">
+        <div class="auth-field">
+          <label>NICKNAME</label>
+          <input type="text" id="reg-name" placeholder="Spike" maxlength="20">
+        </div>
+        <div class="auth-field">
+          <label>EMAIL</label>
+          <input type="email" id="reg-email" placeholder="you@example.com">
+        </div>
+        <div class="auth-field">
+          <label>PASSWORD</label>
+          <input type="password" id="reg-password" placeholder="min 6 characters">
+        </div>
+        <button class="auth-btn" id="btn-register" onclick="doRegister()">CREATE ACCOUNT</button>
+      </div>
+
+      <div class="auth-msg" id="auth-msg"></div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK (compat mode — no bundler needed) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDsh_Wpfeed0gQU6m1aZgHENhMb9tBYi4c",
+      authDomain: "car-thief-online.firebaseapp.com",
+      projectId: "car-thief-online",
+      storageBucket: "car-thief-online.firebasestorage.app",
+      messagingSenderId: "942239496002",
+      appId: "1:942239496002:web:e387b44b309372905dbadb"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db   = firebase.firestore();
+
+    function switchTab(tab) {
+      document.getElementById('form-login').style.display    = tab === 'login'    ? '' : 'none';
+      document.getElementById('form-register').style.display = tab === 'register' ? '' : 'none';
+      document.getElementById('tab-login').classList.toggle('active',    tab === 'login');
+      document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+      setMsg('');
+    }
+
+    function setMsg(text, success = false) {
+      const el = document.getElementById('auth-msg');
+      el.textContent = text;
+      el.className = 'auth-msg' + (success ? ' success' : '');
+    }
+
+    function setLoading(btnId, loading) {
+      document.getElementById(btnId).disabled = loading;
+    }
+
+    async function doLogin() {
+      const email    = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+      if (!email || !password) { setMsg('Please fill in all fields.'); return; }
+      setLoading('btn-login', true);
+      try {
+        const cred = await auth.signInWithEmailAndPassword(email, password);
+        const token = await cred.user.getIdToken();
+        sessionStorage.setItem('fbToken', token);
+        sessionStorage.setItem('fbUid',   cred.user.uid);
+        // Load display name from Firestore
+        const doc = await db.collection('players').doc(cred.user.uid).get();
+        if (doc.exists) {
+          sessionStorage.setItem('playerName', doc.data().displayName);
+        }
+        const params = new URLSearchParams(location.search);
+        const then   = params.get('then') || 'start.html';
+        const join   = params.get('join');
+        window.location.href = then + (join ? '?join=' + join : '');
+      } catch (err) {
+        setMsg(friendlyError(err.code));
+        setLoading('btn-login', false);
+      }
+    }
+
+    async function doRegister() {
+      const name     = document.getElementById('reg-name').value.trim();
+      const email    = document.getElementById('reg-email').value.trim();
+      const password = document.getElementById('reg-password').value;
+      if (!name || !email || !password) { setMsg('Please fill in all fields.'); return; }
+      if (name.length < 2) { setMsg('Nickname must be at least 2 characters.'); return; }
+      setLoading('btn-register', true);
+      try {
+        const cred = await auth.createUserWithEmailAndPassword(email, password);
+        // Create Firestore profile
+        await db.collection('players').doc(cred.user.uid).set({
+          displayName:   name,
+          gamesPlayed:   0,
+          totalEarnings: 0,
+          totalArrests:  0,
+          bestScore:     0,
+          createdAt:     firebase.firestore.FieldValue.serverTimestamp()
+        });
+        const token = await cred.user.getIdToken();
+        sessionStorage.setItem('fbToken',     token);
+        sessionStorage.setItem('fbUid',       cred.user.uid);
+        sessionStorage.setItem('playerName',  name);
+        const params = new URLSearchParams(location.search);
+        const then   = params.get('then') || 'start.html';
+        const join   = params.get('join');
+        window.location.href = then + (join ? '?join=' + join : '');
+      } catch (err) {
+        setMsg(friendlyError(err.code));
+        setLoading('btn-register', false);
+      }
+    }
+
+    async function forgotPassword() {
+      const email = document.getElementById('login-email').value.trim();
+      if (!email) { setMsg('Enter your email address first.'); return; }
+      try {
+        await auth.sendPasswordResetEmail(email);
+        setMsg('Reset email sent — check your inbox.', true);
+      } catch (err) {
+        setMsg(friendlyError(err.code));
+      }
+    }
+
+    function friendlyError(code) {
+      switch (code) {
+        case 'auth/user-not-found':       return 'No account with that email.';
+        case 'auth/wrong-password':       return 'Incorrect password.';
+        case 'auth/email-already-in-use': return 'That email is already registered.';
+        case 'auth/weak-password':        return 'Password must be at least 6 characters.';
+        case 'auth/invalid-email':        return 'Invalid email address.';
+        case 'auth/too-many-requests':    return 'Too many attempts — try again later.';
+        default:                          return 'Something went wrong. Try again.';
+      }
+    }
+
+    // Enter key support
+    document.addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      const loginVisible = document.getElementById('form-login').style.display !== 'none';
+      if (loginVisible) doLogin(); else doRegister();
+    });
+  </script>
+</body>
+</html>
+

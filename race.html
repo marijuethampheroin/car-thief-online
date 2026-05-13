@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Car Thief Online — Race</title>
+<link rel="stylesheet" href="styles.css">
+<script src="game.js"></script>
+<link rel="manifest" href="/manifest.json">
+<script>if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');</script></head>
+<body class="main-screen">
+<div class="window game-window">
+  <div class="window-titlebar" style="display:none">Car Thief Online [Beta]</div>
+
+  <!-- HUD -->
+  <div class="hud">
+    <div class="hud-row">
+      <span>Day <span class="hud-val" id="day">1</span></span>
+      <span class="hud-sep">|</span>
+      <span>Debt: <span class="hud-val debt-val" id="debt">$0</span></span>
+      <div class="hud-spacer"></div>
+    </div>
+    <div class="hud-row">
+      <span>Cash: <span class="hud-val" id="cash">$0</span></span>
+      <span class="hud-sep">|</span>
+      <span>Wanted: <span id="wantedStars" style="letter-spacing:1px;color:#ffcc00"></span></span>
+      <div class="hud-spacer"></div>
+    </div>
+  </div>
+
+  <!-- 3-COLUMN BODY -->
+  <div class="game-body" style="align-items:stretch">
+
+    <!-- LEFT: empty / scene image placeholder -->
+    <div class="left-panel" id="leftPanel" style="min-width:130px;max-width:130px">
+    </div>
+
+    <!-- CENTER: Race scene -->
+    <div style="flex:1;display:flex;flex-direction:column;min-width:0;padding:4px 6px;gap:4px">
+
+      <!-- Groups header -->
+      <div style="display:flex;gap:6px;align-items:flex-start">
+
+        <!-- Player Groups -->
+        <div style="flex:1">
+          <div style="font-size:10px;color:var(--text-dim);text-align:center;margin-bottom:2px;font-family:'Oswald',sans-serif;letter-spacing:0.5px">Player Groups</div>
+          <div style="display:flex;gap:3px;align-items:center">
+            <!-- direction arrow -->
+            <div style="width:20px;height:20px;background:var(--bg-mid);border:1px solid var(--border-dark);
+                        display:flex;align-items:center;justify-content:center;font-size:11px;color:#ffd080">?</div>
+            <!-- player vehicle slot -->
+            <div style="display:flex;gap:2px">
+              <div id="playerCarSlot" class="rp-slot" style="width:56px;height:36px"></div>
+              <div id="playerPortraitSlot" class="rp-slot" style="width:36px;height:36px"></div>
+            </div>
+            <div style="flex:1"></div>
+          </div>
+          <!-- empty extra group rows -->
+          <div style="margin-top:2px;display:flex;flex-direction:column;gap:2px">
+            <div style="height:20px;background:var(--bg-mid);border:1px solid var(--border-dark);opacity:0.3"></div>
+            <div style="height:20px;background:var(--bg-mid);border:1px solid var(--border-dark);opacity:0.2"></div>
+            <div style="height:20px;background:var(--bg-mid);border:1px solid var(--border-dark);opacity:0.1"></div>
+          </div>
+        </div>
+
+        <!-- Enemy Groups -->
+        <div style="flex:1">
+          <div style="font-size:10px;color:var(--text-dim);text-align:center;margin-bottom:2px;font-family:'Oswald',sans-serif;letter-spacing:0.5px">Enemy Groups</div>
+          <div style="display:flex;gap:3px;align-items:center;justify-content:flex-end">
+            <div style="flex:1"></div>
+            <div style="display:flex;gap:2px">
+              <div id="oppCarSlot" class="rp-slot" style="width:56px;height:36px"></div>
+              <div id="oppPortraitSlot" class="rp-slot" style="width:36px;height:36px"></div>
+            </div>
+            <div id="oppArrow" style="width:20px;height:20px;background:var(--bg-mid);border:1px solid var(--border-dark);
+                        display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--text-dim)">?</div>
+          </div>
+          <div style="margin-top:2px;display:flex;flex-direction:column;gap:2px">
+            <div style="height:20px;background:var(--bg-mid);border:1px solid var(--border-dark);opacity:0.3"></div>
+            <div style="height:20px;background:var(--bg-mid);border:1px solid var(--border-dark);opacity:0.2"></div>
+            <div style="height:20px;background:var(--bg-mid);border:1px solid var(--border-dark);opacity:0.1"></div>
+          </div>
+        </div>
+
+      </div><!-- /groups header -->
+
+      <!-- Race log -->
+      <div id="raceLog" style="flex:1;overflow-y:auto;background:var(--bg-mid);border:1px solid var(--border-dark);
+                                padding:5px 6px;font-size:10px;line-height:1.6;font-family:'Courier New',monospace">
+      </div>
+
+    </div><!-- /center -->
+
+    <!-- RIGHT: empty (CT6 has nothing here during race) -->
+    <div class="right-panel" style="min-width:90px;max-width:90px"></div>
+
+  </div><!-- /game-body -->
+
+  <!-- STATUS BAR — Police meters -->
+  <div class="status-bar">
+    <span style="font-size:10px;color:var(--text-dim)">Police Awareness</span>
+    <div class="meter-track" style="width:90px"><div class="meter-fill wanted" id="awarenessFill" style="width:0%"></div></div>
+    <span id="awarenessVal" style="font-size:10px;color:var(--text-dim);min-width:24px">0</span>
+    <div style="width:12px"></div>
+    <span style="font-size:10px;color:var(--text-dim)">Police Readiness</span>
+    <div class="meter-track" style="width:90px"><div class="meter-fill" id="readinessFill" style="width:22%;background:#5080e0"></div></div>
+    <span id="readinessVal" style="font-size:10px;color:var(--text-dim);min-width:24px">22</span>
+    <div style="flex:1"></div>
+    <button class="help">?</button>
+    <div id="turnBtnWrap">
+      <button class="btn btn-go" id="turnBtn" style="min-width:80px;padding:4px 14px">Turn</button>
+    </div>
+  </div>
+
+  <!-- MESSAGE LOG -->
+  <div class="msg-strip">
+    <div class="msg-text" id="msgText"><p>The race is about to begin.</p></div>
+    <button class="msg-more" title="Message archive">···</button>
+  </div>
+
+</div><!-- /window -->
+
+<script>
+// -- State --------------------------------------------------------------------
+let gs = loadState();
+if (!gs || !gs.currentRace) {
+  // Direct navigation without a race set up — redirect home
+  window.location.href = 'game.html';
+}
+
+const race      = gs.currentRace;
+const pv        = race.playerVehicle;
+const ov        = race.opponentVehicle;
+const portrait  = gs.portraitSrc || '';
+
+// -- HUD ----------------------------------------------------------------------
+function renderHUD() {
+  document.getElementById('day').textContent  = gs.day;
+  document.getElementById('debt').textContent = '$' + gs.debt.toLocaleString();
+  document.getElementById('cash').textContent = '$' + gs.cash.toLocaleString();
+  const w = gs.wantedLevel || 0;
+  document.getElementById('wantedStars').textContent = '?'.repeat(w) + '?'.repeat(5 - w);
+}
+renderHUD();
+
+// -- Render vehicle sprite into a slot div -------------------------------------
+function renderCarSlot(el, v, scale) {
+  if (!v || !el) return;
+  const s = scale || 0.875;
+  const sw = Math.round(640 * s), sh = Math.round(48 * s), fx = Math.round((v.frameX || 0) * s);
+  el.innerHTML = `<div style="width:100%;height:100%;background:url('${v.img}') -${fx}px 50%/${sw}px ${sh}px no-repeat"></div>`;
+}
+
+// -- Populate groups -----------------------------------------------------------
+renderCarSlot(document.getElementById('playerCarSlot'), pv);
+if (portrait) {
+  document.getElementById('playerPortraitSlot').innerHTML =
+    `<img src="${portrait}" style="width:100%;height:100%;object-fit:cover;object-position:top" onerror="this.style.opacity='0'">`;
+}
+
+renderCarSlot(document.getElementById('oppCarSlot'), ov);
+// Random NPC portrait from enemy01–111.bmp
+const npcIdx = String(Math.floor(Math.random() * 111) + 1).padStart(2, '0');
+document.getElementById('oppPortraitSlot').innerHTML =
+  `<img src="Graphics/enemy_portraits/enemy${npcIdx}.bmp" style="width:100%;height:100%;object-fit:cover;object-position:top" onerror="this.style.opacity='0'">`;
+
+// -- Log helpers ---------------------------------------------------------------
+const LOG_COLORS = {
+  dim:     'color:#8a7060',
+  skill:   'color:#8080d0',
+  good:    'color:#60c060',
+  bad:     'color:#d06060',
+  neutral: 'color:var(--text-light)',
+};
+
+function appendLog(entries) {
+  const log = document.getElementById('raceLog');
+  for (const e of entries) {
+    const p = document.createElement('p');
+    p.style.cssText = (LOG_COLORS[e.style] || LOG_COLORS.neutral) + ';margin:0;padding:1px 0';
+    p.textContent = e.text;
+    log.appendChild(p);
+  }
+  log.scrollTop = log.scrollHeight;
+}
+
+// -- Meters --------------------------------------------------------------------
+function updateMeters() {
+  const r = gs.currentRace || race;
+  const aw = r.policeAwareness || 0;
+  const rd = r.policeReadiness || 22;
+  document.getElementById('awarenessFill').style.width = aw + '%';
+  document.getElementById('awarenessVal').textContent  = aw;
+  document.getElementById('readinessFill').style.width = Math.min(100, rd) + '%';
+  document.getElementById('readinessVal').textContent  = rd;
+}
+updateMeters();
+
+// -- Opening log ---------------------------------------------------------------
+appendLog([
+  { text: '[You have entered the scene of the action]', style: 'neutral' },
+  { text: `The road is 1 mile long and has ${RACE_CHECKPOINTS.length} checkpoints. The winner takes the loser's car. Your group is at the start position...`, style: 'neutral' },
+]);
+
+// -- Turn button ---------------------------------------------------------------
+let raceFinished = false;
+
+document.getElementById('turnBtn').addEventListener('click', () => {
+  if (raceFinished) return;
+
+  // Reload state (in case anything changed)
+  gs = loadState();
+  if (!gs.currentRace) { window.location.href = 'game.html'; return; }
+
+  const result = resolveRaceTurn(gs);
+  gs = loadState(); // pick up mutations saved by resolveRaceTurn
+
+  appendLog(result.log);
+  updateMeters();
+
+  if (result.finished) {
+    raceFinished = true;
+    // Replace Turn button with Close
+    const wrap = document.getElementById('turnBtnWrap');
+    wrap.innerHTML = `<button class="btn btn-go" id="closeBtn" style="min-width:80px;padding:4px 14px">Close</button>`;
+    document.getElementById('closeBtn').addEventListener('click', () => {
+      if (result.winner === 'player') {
+        resolveRaceWin(gs);
+      } else {
+        resolveRaceLoss(gs);
+      }
+      window.location.href = 'game.html';
+    });
+
+    // Dim opponent arrow if they lost
+    if (result.winner === 'player') {
+      document.getElementById('oppArrow').style.opacity = '0.3';
+    }
+  }
+});
+
+// Countdown log — fires once after a short delay for atmosphere
+setTimeout(() => {
+  appendLog([
+    { text: 'The flagger is counting down...', style: 'neutral' },
+    { text: 'Three...', style: 'neutral' },
+    { text: 'Two...', style: 'neutral' },
+    { text: 'One...', style: 'neutral' },
+    { text: 'His hand drops... GO! Mashing the gas...', style: 'neutral' },
+  ]);
+}, 400);
+</script>
+</body>
+</html>
+

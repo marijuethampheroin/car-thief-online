@@ -1,0 +1,221 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Car Thief Online — Leaderboard</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .lb-window { width: 520px; }
+    .lb-body { padding: 20px 24px 28px; background: var(--bg-main); }
+
+    .lb-tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 16px;
+    }
+    .lb-tab {
+      flex: 1;
+      padding: 7px;
+      background: var(--bg-dark);
+      border: 1px solid var(--border-dark);
+      border-radius: 2px;
+      font-family: 'Oswald', sans-serif;
+      font-size: 12px;
+      letter-spacing: 0.5px;
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .lb-tab.active {
+      background: var(--accent);
+      color: var(--text-light);
+    }
+
+    .lb-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .lb-table thead tr {
+      background: var(--bg-dark);
+    }
+    .lb-table th {
+      font-family: 'Oswald', sans-serif;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+      color: var(--text-dim);
+      padding: 7px 10px;
+      text-align: left;
+      border-bottom: 2px solid var(--border-dark);
+    }
+    .lb-table th.num { text-align: right; }
+    .lb-table td {
+      padding: 7px 10px;
+      border-bottom: 1px solid rgba(0,0,0,0.25);
+      color: var(--text-light);
+      background: rgba(0,0,0,0.15);
+    }
+    .lb-table td.num { text-align: right; font-family: 'Oswald', sans-serif; }
+    .lb-table tbody tr:hover td { background: rgba(0,0,0,0.28); }
+
+    .rank-cell { font-family: 'Oswald', sans-serif; color: var(--text-dim); width: 32px; }
+    .rank-1 { color: #ffd700; }
+    .rank-2 { color: #c0c0c0; }
+    .rank-3 { color: #cd7f32; }
+
+    .lb-loading, .lb-empty {
+      text-align: center;
+      padding: 32px;
+      color: var(--text-dim);
+      font-family: 'Oswald', sans-serif;
+      letter-spacing: 0.5px;
+      font-size: 13px;
+    }
+
+    .back-btn {
+      display: block;
+      width: 100%;
+      margin-top: 16px;
+      padding: 9px;
+      background: var(--bg-dark);
+      border: 1px solid var(--border-dark);
+      border-radius: 2px;
+      font-family: 'Oswald', sans-serif;
+      font-size: 13px;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: color 0.15s, background 0.15s;
+    }
+    .back-btn:hover { background: var(--accent); color: var(--text-light); }
+  </style>
+<link rel="manifest" href="/manifest.json">
+<script>if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');</script></head>
+<body>
+  <div class="window lb-window">
+    <div class="window-titlebar">
+      <span>LEADERBOARD</span>
+      <div class="win-btns">
+        <div class="win-btn"></div>
+        <div class="win-btn"></div>
+        <div class="win-btn"></div>
+      </div>
+    </div>
+    <div class="lb-body">
+
+      <div class="lb-tabs">
+        <button class="lb-tab active" onclick="loadTab('bestScore',    this)">BEST SCORE</button>
+        <button class="lb-tab"        onclick="loadTab('totalEarnings', this)">TOTAL EARNINGS</button>
+        <button class="lb-tab"        onclick="loadTab('gamesPlayed',   this)">GAMES PLAYED</button>
+      </div>
+
+      <div id="lb-content">
+        <div class="lb-loading">Loading...</div>
+      </div>
+
+      <button class="back-btn" onclick="history.back()">← BACK</button>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDsh_Wpfeed0gQU6m1aZgHENhMb9tBYi4c",
+      authDomain: "car-thief-online.firebaseapp.com",
+      projectId: "car-thief-online",
+      storageBucket: "car-thief-online.firebasestorage.app",
+      messagingSenderId: "942239496002",
+      appId: "1:942239496002:web:e387b44b309372905dbadb"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db   = firebase.firestore();
+
+    // Redirect to auth if not logged in
+    auth.onAuthStateChanged(user => {
+      if (!user) window.location.href = 'auth.html';
+    });
+
+    const LABELS = {
+      bestScore:     { label: 'Best Score',     fmt: v => '$' + v.toLocaleString() },
+      totalEarnings: { label: 'Total Earnings', fmt: v => '$' + v.toLocaleString() },
+      gamesPlayed:   { label: 'Games',          fmt: v => v },
+    };
+
+    let currentTab = 'bestScore';
+
+    async function loadTab(field, btn) {
+      // Update active tab button
+      document.querySelectorAll('.lb-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentTab = field;
+
+      const content = document.getElementById('lb-content');
+      content.innerHTML = '<div class="lb-loading">Loading...</div>';
+
+      try {
+        const snap = await db.collection('players')
+          .orderBy(field, 'desc')
+          .limit(20)
+          .get();
+
+        if (snap.empty) {
+          content.innerHTML = '<div class="lb-empty">No entries yet.</div>';
+          return;
+        }
+
+        const col = LABELS[field];
+        let rows = '';
+        snap.docs.forEach((doc, i) => {
+          const d    = doc.data();
+          const rank = i + 1;
+          const rankClass = rank <= 3 ? ` rank-${rank}` : '';
+          rows += `
+            <tr>
+              <td class="rank-cell${rankClass}">${rankMedal(rank)}</td>
+              <td>${escHtml(d.displayName || 'Unknown')}</td>
+              <td class="num">${col.fmt(d[field] || 0)}</td>
+              <td class="num" style="color:var(--text-dim);font-size:11px">${d.gamesPlayed || 0} games</td>
+            </tr>`;
+        });
+
+        content.innerHTML = `
+          <table class="lb-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>PLAYER</th>
+                <th class="num">${col.label.toUpperCase()}</th>
+                <th class="num">PLAYED</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>`;
+      } catch (err) {
+        content.innerHTML = `<div class="lb-empty">Failed to load. Check console.</div>`;
+        console.error(err);
+      }
+    }
+
+    function rankMedal(rank) {
+      if (rank === 1) return '🥇';
+      if (rank === 2) return '🥈';
+      if (rank === 3) return '🥉';
+      return rank;
+    }
+
+    function escHtml(str) {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // Load default tab
+    loadTab('bestScore', document.querySelector('.lb-tab'));
+  </script>
+</body>
+</html>
+

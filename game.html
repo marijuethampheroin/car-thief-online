@@ -1,0 +1,2062 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Car Thief Online</title>
+<link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="styles_v2.css">
+<script src="game.js"></script>
+<link rel="manifest" href="manifest.json">
+<script>if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');</script></head>
+<body class="main-screen">
+<div class="window game-window">
+  <div class="window-titlebar" style="display:none">
+    Car Thief Online [Beta]
+    <div class="win-btns">
+      <button class="win-btn">—</button>
+      <button class="win-btn">□</button>
+      <button class="win-btn">✕</button>
+    </div>
+  </div>
+
+  <!-- HUD -->
+  <div class="hud">
+    <div class="hud-row">
+      <span>Day <span class="hud-val" id="day">1</span></span>
+      <span class="hud-sep">|</span>
+      <span>Debt: <span class="hud-val debt-val" id="debt">$746,800</span></span>
+      <div class="hud-spacer"></div>
+      <div class="hud-icon" title="Message Archive">💬</div>
+      <div class="hud-icon" title="Contacts" onclick="openContactsModal()">👥</div>
+      <div class="menu-wrap" id="menuWrap">
+        <button class="menu-btn" id="menuBtn" onclick="toggleMenu()">Menu ▾</button>
+        <div class="menu-dropdown" id="menuDropdown" style="display:none">
+          <div class="menu-item" id="menuItemExit"></div>
+          <div class="menu-item" id="menuItemDragMode"></div>
+        </div>
+      </div>
+    </div>
+    <div class="hud-row">
+      <span>Cash: <span class="hud-val" id="cash">$3,000</span></span>
+      <button class="help" title="Help">?</button>
+      <span class="hud-sep">|</span>
+      <span>Priors: <span id="wantedStars" style="letter-spacing:2px;color:#cc8844"></span></span>
+      <span>Daily Costs: <span class="hud-val" id="daily">$0</span></span>
+      <div class="hud-spacer"></div>
+    </div>
+  </div>
+
+  <!-- 3-COLUMN BODY -->
+  <div class="game-body">
+
+    <!-- LEFT: Context panel (blank until something is selected) -->
+    <div class="left-panel" id="leftPanel">
+    </div>
+
+    <!-- CENTER: Map -->
+    <div class="map-wrap" id="mapWrap">
+      <!-- city map image set dynamically from gs.currentCity -->
+      <img class="map-bg" id="mapBg" src=""
+           onerror="this.style.opacity='0.15'" alt="City Map">
+      <!-- map icons injected by JS -->
+    </div>
+
+    <!-- RIGHT: Team / Hideout / Garage -->
+    <div class="right-panel">
+      <!-- Vehicle Storage — shared item stash; doubles as location context when map icon selected -->
+      <div class="r-section" id="rightCtxSection">
+        <div class="r-lbl" id="rightCtxLbl">Vehicle Storage</div>
+        <div class="rp-grid" id="rightCtxGrid">
+          <div class="rp-slot vs-slot" id="rightCtxSlot0" data-owner="storage" data-slot="0"></div>
+          <div class="rp-slot vs-slot" id="rightCtxSlot1" data-owner="storage" data-slot="1"></div>
+          <div class="rp-slot vs-slot" id="rightCtxSlot2" data-owner="storage" data-slot="2"></div>
+          <div class="rp-slot vs-slot" id="rightCtxSlot3" data-owner="storage" data-slot="3"></div>
+          <div class="rp-slot vs-slot" id="rightCtxSlot4" data-owner="storage" data-slot="4"></div>
+          <div class="rp-slot vs-slot" id="rightCtxSlot5" data-owner="storage" data-slot="5"></div>
+        </div>
+      </div>
+      <div class="r-section panel">
+        <div class="r-lbl">Active Team</div>
+        <div class="rp-grid" id="activeTeam"></div>
+      </div>
+      <div class="r-section panel">
+        <div class="r-lbl">Hide-out</div>
+        <div class="rp-grid" id="hideout">
+          <div class="rp-slot"></div>
+          <div class="rp-slot inactive"></div>
+          <div class="rp-slot inactive"></div>
+          <div class="rp-slot inactive"></div>
+          <div class="rp-slot inactive"></div>
+          <div class="rp-slot inactive"></div>
+        </div>
+      </div>
+      <div class="r-section panel">
+        <div class="r-lbl">Garage</div>
+        <div class="rp-grid" id="garage"></div>
+      </div>
+    </div>
+
+  </div><!-- /game-body -->
+
+  <!-- STATUS BAR -->
+  <div class="status-bar">
+    <span>Police Readiness</span>
+    <div class="meter-track"><div class="meter-fill wanted" id="readinessFill" style="width:0%"></div></div>
+    <span id="readinessVal" style="font-size:10px;color:var(--text-dim)">0</span>
+    <button class="help" onclick="showModal('Police Readiness',`
+      <p>The <strong>Police Readiness</strong> meter shows how alert and mobilised local law enforcement is right now.</p>
+      <p>Every crime scene you enter pushes the meter up — the more action you take before escaping, the higher it climbs.
+         Being arrested also raises it. Once it reaches 100 during a scene, the police arrive and you are busted.</p>
+      <p>The meter <strong>does not reset between crimes</strong>. If you flee a scene at 60, your next crime starts at 90 (60 + 30 for entering the scene) — leaving you very little margin before the cops show up.</p>
+      <p>Lying low helps. Readiness drops by <strong>15 points each day</strong> that passes. Skipping a day or two after a hot job lets the heat cool before you go back out.</p>
+      <p>Your <strong>Priors</strong> (rap sheet, shown in the HUD) track how many times you have been arrested on drug charges. 3 strikes means serious jail time.</p>
+    `)">?</button>
+    <div style="flex:1"></div>
+    <span class="city-name" id="cityName">Las Vegas, NV</span>
+    <button class="nav-btn" title="Fly to another city" onclick="renderLeftPanel({type:'airport'})">✈</button>
+    <button class="nav-btn" title="Skip one day">▶▶</button>
+  </div>
+
+  <!-- MESSAGE LOG -->
+  <div class="msg-strip">
+    <div class="msg-text" id="msgText"><p>Welcome to Car Thief Online.</p><p>Click a location on the map to begin.</p></div>
+    <button class="msg-more" title="Message archive">···</button>
+  </div>
+
+</div><!-- /window -->
+
+<!-- CONTACTS MODAL -->
+<div class="ct-modal-overlay" id="contactsOverlay" style="display:none" onclick="if(event.target===this)closeContactsModal()">
+  <div class="ct-modal">
+    <div class="ct-modal-header">
+      <span class="ct-modal-title">Contacts</span>
+      <button class="ct-modal-close" onclick="closeContactsModal()">✕</button>
+    </div>
+    <div class="ct-modal-tabs" id="contactsTabs">
+      <button class="ct-tab active" data-tab="available">Available</button>
+      <button class="ct-tab" data-tab="hired">Crew</button>
+      <button class="ct-tab" data-tab="away">Away</button>
+      <button class="ct-tab" data-tab="assignments">Assign</button>
+    </div>
+    <div class="ct-modal-body" id="contactsBody"></div>
+  </div>
+</div>
+
+<script>
+// ── MENU ──────────────────────────────────────────────────────────────────────
+function toggleMenu() {
+  const d = document.getElementById('menuDropdown');
+  d.style.display = d.style.display === 'none' ? 'block' : 'none';
+}
+document.addEventListener('click', function(e) {
+  if (!document.getElementById('menuWrap').contains(e.target)) {
+    document.getElementById('menuDropdown').style.display = 'none';
+  }
+});
+function initMenu() {
+  const item = document.getElementById('menuItemExit');
+  if (IS_MP) {
+    item.textContent = 'Back to Lobby';
+    item.onclick = () => window.location.href = 'lobby.html';
+  } else {
+    item.textContent = 'New Game';
+    item.onclick = () => window.location.href = 'start.html';
+  }
+  // Item drag mode toggle — wired after gs loads via initMenuDragToggle()
+  const dragItem = document.getElementById('menuItemDragMode');
+  dragItem.textContent = '→ Item drag: Move'; // placeholder until gs available
+  dragItem.onclick = () => {
+    gs.itemDragSwap = !gs.itemDragSwap;
+    saveState(gs);
+    dragItem.textContent = gs.itemDragSwap ? '↔ Item drag: Swap' : '→ Item drag: Move';
+  };
+}
+
+function initMenuDragToggle() {
+  const dragItem = document.getElementById('menuItemDragMode');
+  dragItem.textContent = gs.itemDragSwap ? '↔ Item drag: Swap' : '→ Item drag: Move';
+}
+
+// ── CONTACTS MODAL ────────────────────────────────────────────────────────────
+let contactsActiveTab = 'available';
+
+function openContactsModal() {
+  // Generate a starting contact if the player has none yet
+  if (!gs.contacts || gs.contacts.length === 0) {
+    generateContact(gs);
+    saveState(gs);
+  }
+  contactsActiveTab = 'available';
+  renderContactsModal();
+  document.getElementById('contactsOverlay').style.display = 'flex';
+}
+
+function closeContactsModal() {
+  document.getElementById('contactsOverlay').style.display = 'none';
+}
+
+function renderAssignmentsTab(body) {
+  const hired = (gs.contacts || []).filter(c => c.status === 'hired');
+
+  // Build location options for the current city (all locs with dealRisk > 0)
+  const cityLocs = getCityLocations(gs).filter(l => l.dealRisk > 0);
+
+  if (!hired.length) {
+    body.innerHTML = `<div class="ct-empty">You have no hired crew to assign.</div>`;
+    return;
+  }
+
+  const rows = hired.map(c => {
+    const assignment = (gs.drugDealing || []).find(r => r.contactId === c.id);
+    const assignedLoc = assignment
+      ? cityLocs.find(l => l.id === assignment.locId) || { label: 'Unknown location' }
+      : null;
+
+    const locOptions = cityLocs.map(l =>
+      `<option value="${l.id}" ${assignment && assignment.locId === l.id ? 'selected' : ''}>${l.label} (risk ${l.dealRisk}%)</option>`
+    ).join('');
+
+    const actionBtn = assignment
+      ? `<button class="ctx-action-btn" style="font-size:9px;background:#3a1a1a;color:#e08060;border-color:#5a2a2a" data-recall="${c.id}">Recall</button>`
+      : `<button class="ctx-action-btn" style="font-size:9px;background:#1a3a1a;color:#80e080;border-color:#2a5a2a" data-assign="${c.id}">Assign</button>`;
+
+    return `<div style="display:flex;align-items:center;gap:6px;padding:5px 4px;border-bottom:1px solid var(--border-dark);font-size:10px">
+      <img src="${c.portrait}" style="width:28px;height:28px;object-fit:cover;border:1px solid var(--border-dark)" onerror="this.style.opacity='0.2'">
+      <div style="flex:1;min-width:0">
+        <div style="color:var(--text-light);font-family:'Oswald',sans-serif;font-size:11px">${c.name}</div>
+        <div style="color:var(--text-dim);font-size:9px">${assignment ? `Dealing at ${assignedLoc.label}` : 'Not assigned'}</div>
+      </div>
+      ${!assignment && cityLocs.length ? `<select class="assign-loc-select" data-for="${c.id}" style="font-size:9px;background:var(--bg-dark);color:var(--text-light);border:1px solid var(--border-dark);padding:1px 2px;max-width:90px">${locOptions}</select>` : ''}
+      ${actionBtn}
+    </div>`;
+  }).join('');
+
+  body.innerHTML = `<div style="padding:4px">${rows}</div>`;
+
+  // Wire assign buttons
+  body.querySelectorAll('[data-assign]').forEach(btn => {
+    btn.onclick = () => {
+      const cid = btn.dataset.assign;
+      const sel = body.querySelector(`.assign-loc-select[data-for="${cid}"]`);
+      const locId = sel ? sel.value : null;
+      if (!locId) { logMsg('Select a location first.'); return; }
+      const res = assignToDealing(gs, cid, locId);
+      logMsg(res.msg);
+      renderAssignmentsTab(body);
+    };
+  });
+
+  // Wire recall buttons
+  body.querySelectorAll('[data-recall]').forEach(btn => {
+    btn.onclick = () => {
+      const res = recallFromDealing(gs, btn.dataset.recall);
+      logMsg(res.msg);
+      renderAssignmentsTab(body);
+    };
+  });
+}
+
+function renderContactsModal() {
+  const contacts = gs.contacts || [];
+
+  // Tab filter
+  const tabFilter = {
+    available: c => c.status === 'available',
+    hired:     c => c.status === 'hired',
+    away:      c => c.status === 'jailed' || c.status === 'prison',
+  };
+  const visible = contacts.filter(tabFilter[contactsActiveTab] || (() => false));
+
+  // Tab buttons
+  document.querySelectorAll('.ct-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === contactsActiveTab);
+    btn.onclick = () => { contactsActiveTab = btn.dataset.tab; renderContactsModal(); };
+  });
+
+  const body = document.getElementById('contactsBody');
+
+  // ── Assignments tab — bespoke render ──────────────────────────────────────
+  if (contactsActiveTab === 'assignments') {
+    renderAssignmentsTab(body);
+    return;
+  }
+
+  if (visible.length === 0) {
+    const emptyMsg = {
+      available: 'No contacts available right now. Advance a day to find new ones.',
+      hired:     'You have no crew members yet.',
+      away:      'No one is currently jailed or imprisoned.',
+    }[contactsActiveTab] || '';
+    body.innerHTML = `<div class="ct-empty">${emptyMsg}</div>`;
+    return;
+  }
+
+  body.innerHTML = visible.map(c => {
+    const profLabel = c.profession.charAt(0).toUpperCase() + c.profession.slice(1);
+    const skillKeys = ['acting','shooting','hiding','driving','locksmithing','electronics'];
+    const statBars = skillKeys.map(k => {
+      const s = c.stats[k];
+      const pct = Math.round((s.val / s.max) * 100);
+      return `<div class="ct-stat-row">
+        <span class="ct-stat-name">${s.label}</span>
+        <div class="stat-track ct-track"><div class="stat-fill" style="width:${pct}%"></div></div>
+        <span class="ct-stat-val">${s.val}</span>
+      </div>`;
+    }).join('');
+
+    const statusBadge = {
+      available: `<span class="ct-badge available">Available</span>`,
+      hired:     `<span class="ct-badge hired">Hired · $${c.payAmount}/day</span>`,
+      jailed:    `<span class="ct-badge away">Jailed</span>`,
+      prison:    `<span class="ct-badge away">Prison</span>`,
+    }[c.status] || '';
+
+    const actionBtn = c.status === 'available'
+      ? `<button class="ctx-action-btn ct-hire-btn" data-cid="${c.id}">Hire · $${c.payAmount}/day</button>`
+      : '';
+
+    return `<div class="ct-card">
+      <div class="ct-card-top">
+        <div class="ct-portrait-wrap">
+          <img src="${c.portrait}" class="ct-portrait" onerror="this.style.opacity='0.2'">
+        </div>
+        <div class="ct-card-info">
+          <div class="ct-name">${c.name}</div>
+          <div class="ct-sub">${profLabel} · ${c.tierLabel}</div>
+          ${statusBadge}
+          <div class="ct-stats">${statBars}</div>
+          ${actionBtn}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Wire hire buttons
+  body.querySelectorAll('.ct-hire-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const result = hireContact(gs, btn.dataset.cid);
+      if (result.ok) {
+        gs = loadState();
+        logMsg(result.msg);
+        renderHUD();
+        renderActiveTeam();
+        renderContactsModal();
+      }
+    });
+  });
+}
+
+// ── MULTIPLAYER DETECTION ─────────────────────────────────────────────────────
+// If playerId + roomCode are in sessionStorage we're in a multiplayer session.
+// Single-player (direct file open) works as before — no WebSocket needed.
+const MP_ID   = sessionStorage.getItem('playerId');
+const MP_CODE = sessionStorage.getItem('roomCode');
+const IS_MP   = !!(MP_ID && MP_CODE);
+let mpWs      = null;
+initMenu();
+
+// Load game state (from game.js layer)
+let gs = loadState();
+
+// Fallback: if navigated here without going through index, build a default state
+if (!gs) {
+  sessionStorage.setItem('playerName', 'Player');
+  sessionStorage.setItem('portraitSrc', '');
+  sessionStorage.setItem('profession', 'actor');
+  gs = initState('actor', 'las_vegas');
+}
+
+// Guard for old saves missing city data
+if (!gs.currentCity) gs.currentCity = 'las_vegas';
+if (!gs.cities) { initCities(gs); saveState(gs); }
+// Guard for old saves missing contacts
+if (!gs.contacts) { gs.contacts = []; saveState(gs); }
+// Guard for old saves missing playerAtHideout flag
+if (gs.playerAtHideout === undefined) { gs.playerAtHideout = false; saveState(gs); }
+// Phase 2 guards
+if (!gs.dealerNPCs)   { gs.dealerNPCs = [];  saveState(gs); }
+if (!gs.drugDealing)  { gs.drugDealing = [];  saveState(gs); }
+if (gs.casinoWinnings === undefined) { gs.casinoWinnings = 0; saveState(gs); }
+(gs.contacts || []).forEach(c => { if (c.strikes === undefined) c.strikes = 0; });
+saveState(gs);
+// Guard for old saves using legacy activeVehicle field
+if (gs.activeVehicle !== undefined) {
+  if (!Array.isArray(gs.activeVehicles)) gs.activeVehicles = [];
+  if (gs.activeVehicle && !gs.activeVehicles[0]) gs.activeVehicles[0] = gs.activeVehicle;
+  delete gs.activeVehicle;
+  saveState(gs);
+}
+if (!Array.isArray(gs.activeVehicles)) { gs.activeVehicles = []; saveState(gs); }
+// Guards for item drag system
+if (!Array.isArray(gs.vehicleStorage)) { gs.vehicleStorage = new Array(6).fill(null); saveState(gs); }
+if (gs.itemDragSwap === undefined)     { gs.itemDragSwap = false; saveState(gs); }
+initMenuDragToggle();
+
+// ── CRIME BLOCK MESSAGE ───────────────────────────────────────────────────────
+const crimeBlockMsg = sessionStorage.getItem('crimeBlockMsg');
+if (crimeBlockMsg) {
+  sessionStorage.removeItem('crimeBlockMsg');
+  setTimeout(() => logMsg(crimeBlockMsg), 100);
+}
+
+// ── HUD ──────────────────────────────────────────────────────────────────────
+function renderHUD() {
+  document.getElementById('day').textContent   = gs.day;
+  document.getElementById('debt').textContent  = '$' + gs.debt.toLocaleString();
+  document.getElementById('cash').textContent  = '$' + gs.cash.toLocaleString();
+  document.getElementById('daily').textContent = '$' + computeDailyCosts(gs).toLocaleString();
+  const w  = Math.min(3, gs.wantedLevel || 0);
+  const pr = gs.policeReadiness || 0;
+  document.getElementById('wantedStars').textContent =
+    '●'.repeat(w) + '○'.repeat(3 - w);
+  document.getElementById('readinessFill').style.width = pr + '%';
+  document.getElementById('readinessVal').textContent  = pr;
+}
+renderHUD();
+renderVehicleStorage();
+
+// ── SKIP DAY
+// In multiplayer the server advances the day — hide this button.
+// In single-player it still works as a test stub.
+const skipDayBtn = document.querySelector('.nav-btn[title="Skip one day"]');
+if (IS_MP) {
+  skipDayBtn.style.display = 'none';
+} else {
+  skipDayBtn.addEventListener('click', () => {
+    const result = advanceDay(gs, window._stealableLocDefs);
+    gs = result.state;
+    renderHUD();
+    renderMapIcons(); // refresh icons in case locations changed
+    const msgEl = document.getElementById('msgText');
+    msgEl.innerHTML += `<p>${result.msg}</p>`;
+    msgEl.scrollTop = msgEl.scrollHeight;
+  });
+}
+
+// ── CHARACTER PANEL ───────────────────────────────────────────────────────────
+const portraitSrc = gs.portraitSrc;
+const playerName  = gs.playerName;
+
+let dragSrc     = null; // { type: 'activeVehicle' | 'garage' | 'crew' | 'hideout', idx/id }
+let itemDragSrc = null; // { owner: 'player'|'contact'|'storage', contactId?, slot }
+
+function renderActiveTeam() {
+  const at = document.getElementById('activeTeam');
+  at.innerHTML = '';
+
+  function makeVehicleSlot(avIdx) {
+    const vs = document.createElement('div');
+    const av = gs.activeVehicles[avIdx];
+    vs.className = 'rp-slot';
+    if (av) {
+      const sc=0.5, sw=Math.round(640*sc), sh=Math.round(48*sc), fx=Math.round((av.frameX||0)*sc);
+      vs.title = av.name; vs.style.cursor = 'pointer'; vs.draggable = true;
+      vs.innerHTML = `<div style="width:100%;height:100%;background:url('${av.img}') -${fx}px 50%/${sw}px ${sh}px no-repeat"></div>`;
+      vs.addEventListener('click', () => renderLeftPanel({ type: 'vehicle', data: { vehicle: av, mode: 'owned', avIdx } }));
+      vs.addEventListener('dragstart', () => { dragSrc = { type: 'activeVehicle', avIdx }; });
+    }
+    vs.addEventListener('dragover', e => {
+      if (dragSrc?.type === 'garage' || dragSrc?.type === 'activeVehicle') { e.preventDefault(); vs.style.outline = '2px solid #ffd080'; }
+    });
+    vs.addEventListener('dragleave', () => vs.style.outline = '');
+    vs.addEventListener('drop', e => {
+      e.preventDefault(); vs.style.outline = '';
+      if (dragSrc?.type === 'garage') {
+        const gv = gs.garage[dragSrc.idx];
+        const displaced = gs.activeVehicles[avIdx];
+        gs.activeVehicles[avIdx] = gv;
+        gs.garage.splice(dragSrc.idx, 1, ...(displaced ? [displaced] : []));
+        gs.garage = gs.garage.filter(Boolean);
+        saveState(gs); renderActiveTeam(); renderGarage(); dragSrc = null;
+      } else if (dragSrc?.type === 'activeVehicle' && dragSrc.avIdx !== avIdx) {
+        const tmp = gs.activeVehicles[avIdx];
+        gs.activeVehicles[avIdx] = gs.activeVehicles[dragSrc.avIdx];
+        gs.activeVehicles[dragSrc.avIdx] = tmp;
+        saveState(gs); renderActiveTeam(); dragSrc = null;
+      }
+    });
+    return vs;
+  }
+
+  function makeCrewSlot(member) {
+    const s = document.createElement('div');
+    if (member) {
+      const jailed = member.status === 'jailed';
+      s.className = 'rp-slot' + (jailed ? ' jailed' : '');
+      s.title = jailed
+        ? `${member.name} — JAILED (${member.jailDays} day${member.jailDays !== 1 ? 's' : ''} left)`
+        : `${member.name} — ${member.profession} · $${member.payAmount}/day`;
+      s.style.cursor = 'pointer';
+      s.draggable = !jailed;
+      s.innerHTML = `<img src="${member.portrait}" onerror="this.style.opacity='0.2'" style="${jailed ? 'filter:grayscale(1);opacity:0.5' : ''}">
+        ${jailed ? `<span class="jail-badge">⛓${member.jailDays}d</span>` : ''}`;
+      s.addEventListener('click', () => renderLeftPanel({ type: 'contact', data: member }));
+      if (!jailed) s.addEventListener('dragstart', () => { dragSrc = { type: 'crew', id: member.id }; });
+    } else {
+      s.className = 'rp-slot inactive';
+    }
+    // Empty crew slots accept hideout recalls; occupied slots accept item drops
+    s.addEventListener('dragover', e => {
+      if (dragSrc?.type === 'hideout') { e.preventDefault(); s.style.outline = '2px solid #ffd080'; }
+      else if (itemDragSrc && member) { e.preventDefault(); s.style.outline = '2px solid #80d0ff'; }
+    });
+    s.addEventListener('dragleave', () => s.style.outline = '');
+    s.addEventListener('drop', e => {
+      e.preventDefault(); s.style.outline = '';
+      if (dragSrc?.type === 'hideout') {
+        const result = recallFromHideout(gs, dragSrc.id);
+        logMsg(result.msg);
+        if (result.ok) { gs = loadState(); renderActiveTeam(); renderHideout(); renderHUD(); }
+        dragSrc = null;
+      } else if (itemDragSrc && member) {
+        transferItem(itemDragSrc, { owner: 'contact', contactId: member.id, slot: firstEmptySlot(member.inventory || []) });
+        itemDragSrc = null;
+      }
+    });
+    return s;
+  }
+
+  const hiredCrew = (gs.contacts || [])
+    .filter(c => c.status === 'hired' && !c.assignedLocation)
+    .slice(0, 3);
+
+  const p = document.createElement('div');
+  if (gs.playerAtHideout) {
+    p.className = 'rp-slot inactive';
+    p.title = 'You are at the hideout';
+  } else {
+    p.className = 'rp-slot';
+    p.draggable = true;
+    if (portraitSrc) p.innerHTML = `<img src="${portraitSrc}" onerror="this.style.opacity='0'">`;
+    p.addEventListener('click', () => renderLeftPanel({ type: 'character' }));
+    p.addEventListener('dragstart', () => { dragSrc = { type: 'player' }; });
+  }
+  // Player slot accepts hideout-player recalls and item drops
+  p.addEventListener('dragover', e => {
+    if (dragSrc?.type === 'hideout-player') { e.preventDefault(); p.style.outline = '2px solid #ffd080'; }
+    else if (itemDragSrc && !gs.playerAtHideout) { e.preventDefault(); p.style.outline = '2px solid #80d0ff'; }
+  });
+  p.addEventListener('dragleave', () => p.style.outline = '');
+  p.addEventListener('drop', e => {
+    e.preventDefault(); p.style.outline = '';
+    if (dragSrc?.type === 'hideout-player') {
+      gs.playerAtHideout = false;
+      saveState(gs); renderActiveTeam(); renderHideout(); dragSrc = null;
+      logMsg('You returned to the active team.');
+    } else if (itemDragSrc && !gs.playerAtHideout) {
+      transferItem(itemDragSrc, { owner: 'player', slot: firstEmptySlot(gs.inventory) });
+      itemDragSrc = null;
+    }
+  });
+
+  at.appendChild(makeVehicleSlot(0));        // slot 0 — primary vehicle
+  at.appendChild(p);                         // slot 1 — player
+  at.appendChild(makeCrewSlot(hiredCrew[0]));// slot 2 — hire 1
+  at.appendChild(makeVehicleSlot(1));        // slot 3 — secondary vehicle
+  at.appendChild(makeCrewSlot(hiredCrew[1]));// slot 4 — hire 2
+  at.appendChild(makeCrewSlot(hiredCrew[2]));// slot 5 — hire 3
+}
+renderActiveTeam();
+
+// ── RIGHT PANEL — Context Slot ────────────────────────────────────────────────
+// Shows label + two image thumbnails (scene + NPC portrait) when a location
+// is selected. Hidden when nothing is selected.
+function renderVehicleStorage() {
+  const lbl   = document.getElementById('rightCtxLbl');
+  const slots = Array.from({length: 6}, (_, i) => document.getElementById(`rightCtxSlot${i}`));
+  lbl.textContent = 'Vehicle Storage';
+  const storage = gs.vehicleStorage || [];
+  slots.forEach((s, i) => {
+    s.dataset.owner = 'storage';
+    s.dataset.slot  = String(i);
+    s.classList.add('vs-slot');
+    const item = storage[i];
+    if (item) {
+      s.innerHTML = `<img src="${item.img}" title="${item.label}" draggable="false">`;
+      s.setAttribute('draggable', 'true');
+    } else {
+      s.innerHTML = '';
+      s.removeAttribute('draggable');
+    }
+  });
+}
+
+function renderRightContext(ctx) {
+  if (!ctx) { renderVehicleStorage(); return; }
+  const lbl   = document.getElementById('rightCtxLbl');
+  const slots = Array.from({length: 6}, (_, i) => document.getElementById(`rightCtxSlot${i}`));
+  lbl.textContent = ctx.label || '';
+  // While showing location context, slots are not item drag targets
+  slots.forEach(s => { s.removeAttribute('draggable'); s.classList.remove('vs-slot'); });
+  const imgs = ctx.thumbImgs || [];
+  slots.forEach((s, i) => {
+    const t = imgs[i];
+    s.innerHTML = t ? `<div style="width:100%;height:100%;background:url('${t.img}') -${Math.round((t.frameX||0)*0.625)}px 50%/${Math.round(640*0.625)}px ${Math.round(48*0.625)}px no-repeat"></div>` : '';
+  });
+}
+
+// ── LEFT PANEL — Context Router ───────────────────────────────────────────────
+// The left panel is a context panel. Content swaps depending on what the player
+// selects on the map. Character info is the default view.
+//
+// Usage: renderLeftPanel({ type: 'character' | 'location' | 'vehicle' | 'npc', data: {...} })
+
+function renderLeftPanel(ctx) {
+  const lp = document.getElementById('leftPanel');
+  if (ctx.type !== 'dealer') dealerPanelOpen = false;
+  switch (ctx.type) {
+    case 'location': lp.innerHTML = renderLocationView(ctx.data); break;
+    case 'vehicle':  lp.innerHTML = renderVehicleView(ctx.data);  break;
+    case 'npc':      lp.innerHTML = renderNpcView(ctx.data);      break;
+    case 'store':    renderStorePanel(); break;
+    case 'dealer':   renderDealerPanel(); break;
+    case 'race':     renderRacePanel(ctx.data?.ic, ctx.data?.pool || []); break;
+    case 'bank':     renderBankPanel(); break;
+    case 'airport':    renderAirportPanel(); break;
+    case 'dealer_npc': renderDealerNpcPanel(ctx.data?.ic); break;
+    case 'stealPool': renderStealPanel(ctx.data.ic, ctx.data.pool); break;
+    case 'contact':  lp.innerHTML = renderContactView(ctx.data); break;
+    case 'character':
+    default:         lp.innerHTML = renderCharView();             break;
+  }
+}
+
+// ── Sub-renderer: Character ───────────────────────────────────────────────────
+function renderCharView() {
+  const stats     = gs.stats;
+  const skillKeys = ['acting','shooting','hiding','driving','locksmithing','electronics'];
+
+  let skillRows = '';
+  for (const key of skillKeys) {
+    const s   = stats[key];
+    const pct = Math.round((s.val / s.max) * 100);
+    skillRows += `
+      <div class="stat-row">
+        <span class="stat-name">${s.label}</span>
+        <div class="stat-track"><div class="stat-fill" style="width:${pct}%"></div></div>
+        <span class="stat-val">${s.val}</span>
+      </div>`;
+  }
+
+  let bpSlots = '';
+  for (let i = 0; i < 12; i++) {
+    const item = gs.inventory[i];
+    const drag = item ? ' draggable="true"' : '';
+    bpSlots += `<div class="bp-slot" data-owner="player" data-slot="${i}"${drag}>${item ? `<img src="${item.img}" title="${item.label}" draggable="false">` : ''}</div>`;
+  }
+
+  return `
+    <div class="char-info">
+      <div class="char-portrait-wrap">
+        <div class="char-portrait">
+          ${portraitSrc
+            ? `<img src="${portraitSrc}" alt="portrait" onerror="this.style.opacity='0'">`
+            : '<span class="portrait-placeholder">?</span>'}
+        </div>
+        <button class="help char-help" title="Character info">?</button>
+      </div>
+      <div class="char-name">${playerName}</div>
+      <hr class="lp-divider">
+      <div class="stats-area">
+        <div class="stat-row">
+          <span class="stat-name">${stats.health.label}</span>
+          <div class="stat-track"><div class="stat-fill g" style="width:${stats.health.val}%"></div></div>
+          <span class="stat-val">${stats.health.val}</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-name">${stats.disguise.label}</span>
+          <div class="stat-track"><div class="stat-fill b" style="width:${stats.disguise.val}%"></div></div>
+          <span class="stat-val">${stats.disguise.val}</span>
+          <button class="help" title="Change disguise">👁</button>
+        </div>
+        ${skillRows}
+      </div>
+      <hr class="lp-divider">
+      <div class="backpack-lbl">${playerName}'s Backpack:</div>
+      <div class="inv-grid bp-grid">${bpSlots}</div>
+    </div>`;
+}
+
+// ── Sub-renderer: Contact (crew member) ──────────────────────────────────────
+function renderContactView(c) {
+  const stats     = c.stats || {};
+  const skillKeys = ['acting','shooting','hiding','driving','locksmithing','electronics'];
+  const profLabel = c.profession ? c.profession.charAt(0).toUpperCase() + c.profession.slice(1) : '';
+
+  let skillRows = '';
+  for (const key of skillKeys) {
+    const s = stats[key]; if (!s) continue;
+    const pct = Math.round((s.val / s.max) * 100);
+    skillRows += `
+      <div class="stat-row">
+        <span class="stat-name">${s.label}</span>
+        <div class="stat-track"><div class="stat-fill" style="width:${pct}%"></div></div>
+        <span class="stat-val">${s.val}</span>
+      </div>`;
+  }
+
+  let bpSlots = '';
+  const inv = c.inventory || [];
+  for (let i = 0; i < 12; i++) {
+    const item = inv[i];
+    const drag = item ? ' draggable="true"' : '';
+    bpSlots += `<div class="bp-slot" data-owner="contact" data-contact-id="${c.id}" data-slot="${i}"${drag}>${item ? `<img src="${item.img}" title="${item.label}" draggable="false">` : ''}</div>`;
+  }
+
+  const sh = stats.health, sd = stats.disguise;
+  const jailed = c.status === 'jailed';
+  return `
+    <div class="char-info">
+      ${jailed ? `<div style="background:#6b0000;color:#ffaaaa;font-size:10px;text-align:center;padding:3px 0;margin-bottom:4px;border-radius:2px;">⛓ JAILED — ${c.jailDays} day${c.jailDays !== 1 ? 's' : ''} remaining</div>` : ''}
+      <div class="char-portrait-wrap">
+        <div class="char-portrait" style="${jailed ? 'filter:grayscale(1);opacity:0.6' : ''}">
+          ${c.portrait
+            ? `<img src="${c.portrait}" alt="${c.name}" onerror="this.style.opacity='0'">`
+            : '<span class="portrait-placeholder">?</span>'}
+        </div>
+        <button class="help char-help" data-contact-id="${c.id}" title="${profLabel} · ${c.tierLabel || ''}">?</button>
+      </div>
+      <div class="char-name">${c.name}</div>
+      <div style="font-size:10px;color:var(--text-dim);margin-bottom:4px;text-align:center">${profLabel} · ${c.tierLabel || ''} · $${c.payAmount}/day</div>
+      <hr class="lp-divider">
+      <div class="stats-area">
+        ${sh ? `<div class="stat-row">
+          <span class="stat-name">${sh.label}</span>
+          <div class="stat-track"><div class="stat-fill g" style="width:${sh.val}%"></div></div>
+          <span class="stat-val">${sh.val}</span>
+        </div>` : ''}
+        ${sd ? `<div class="stat-row">
+          <span class="stat-name">${sd.label}</span>
+          <div class="stat-track"><div class="stat-fill b" style="width:${sd.val}%"></div></div>
+          <span class="stat-val">${sd.val}</span>
+        </div>` : ''}
+        ${skillRows}
+      </div>
+      <hr class="lp-divider">
+      <div class="backpack-lbl">${c.name}'s Backpack:</div>
+      <div class="inv-grid bp-grid">${bpSlots}</div>
+    </div>`;
+}
+
+// ── Sub-renderer: Location (stub) ─────────────────────────────────────────────
+function renderLocationView(data) {
+  return `
+    <div class="ctx-location">
+      <div class="ctx-title">${data.label}</div>
+      <div class="ctx-desc">${data.desc}</div>
+      <button class="ctx-action-btn">Go Here</button>
+    </div>`;
+}
+
+// ── Sub-renderer: Vehicle ──────────────────────────────────────────────────────
+function renderVehicleView(data) {
+  const v      = data.vehicle || data;
+  const loc    = data.location || currentLocation;
+  const owned  = data.mode === 'owned';
+  const method = loc && loc.type === 'highway' ? 'Hijack' : 'Steal';
+  const condPct = Math.round(((v.condition || 50) / 95) * 100);
+  const sellPrice = owned ? Math.round((v.price || 0) * ((v.condition || 50) / 100)) : 0;
+
+  const actionBtns = owned ? `
+    <button class="ctx-action-btn" onclick="sellActiveVehicle(${data.avIdx ?? ''})" style="margin-top:6px;width:100%;background:#3a1e00;color:#ffd080">Sell — $${sellPrice.toLocaleString()}</button>
+    <button class="ctx-action-btn" onclick="driveToCity()" style="margin-top:4px;width:100%">Drive to...</button>
+  ` : `
+    <button class="ctx-action-btn" onclick="goToCrime()" style="margin-top:6px;width:100%">${method}</button>
+  `;
+
+  return `
+    <div class="ctx-vehicle">
+      <div style="text-align:center;margin-bottom:4px">
+        <div style="display:inline-block;width:128px;height:96px;background:url('${v.img}') -${(v.frameX||0)*2}px 0/1280px 96px no-repeat" title="${v.name}"></div>
+      </div>
+      <div style="font-size:11px;font-weight:bold;margin-bottom:2px">${v.name}</div>
+      <div style="font-size:10px;color:var(--text-dim);margin-bottom:4px">$${(v.price||0).toLocaleString()} &middot; ${v.spec || v.body || ''}</div>
+      <div class="stat-row">
+        <span class="stat-name">Cond</span>
+        <div class="stat-track"><div class="stat-fill" style="width:${condPct}%"></div></div>
+        <span class="stat-val">${v.condition || '—'}</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-name">Lock</span>
+        <div class="stat-track"><div class="stat-fill b" style="width:${v.lockDef}%"></div></div>
+        <span class="stat-val">${v.lockDef}</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-name">Elec</span>
+        <div class="stat-track"><div class="stat-fill b" style="width:${v.elecDef}%"></div></div>
+        <span class="stat-val">${v.elecDef}</span>
+      </div>
+      ${actionBtns}
+    </div>`;
+}
+
+// ── Sub-renderer: NPC (stub) ──────────────────────────────────────────────────
+function renderNpcView(data) {
+  return `
+    <div class="ctx-npc">
+      <div class="ctx-title">${data.label || 'NPC'}</div>
+      <div class="ctx-desc">NPC details coming soon.</div>
+    </div>`;
+}
+
+// ── Sub-renderer: Bank ───────────────────────────────────────────────────────
+let bankActiveTab = 'account'; // 'account' | 'loan' | 'rob'
+
+function renderBankPanel() {
+  const lp = document.getElementById('leftPanel');
+  const bal     = (gs.bankBalance || 0).toLocaleString();
+  const loanBal = (gs.bankLoan    || 0).toLocaleString();
+  const rateStr = (BANK_INTEREST_RATE * 100).toFixed(1) + '% / day';
+
+  const tabBtn = (id, label) => {
+    const active = bankActiveTab === id;
+    return `<button class="bank-tab${active ? ' active' : ''}" data-bank-tab="${id}">${label}</button>`;
+  };
+
+  let tabContent = '';
+  if (bankActiveTab === 'account') {
+    tabContent = `
+      <div class="bank-info-row"><span>Balance</span><strong>$${bal}</strong></div>
+      <div class="bank-info-row" style="font-size:9px;color:var(--text-dim)"><span>Interest</span><span>${rateStr}</span></div>
+      <hr class="lp-divider">
+      <div class="bank-input-row">
+        <input id="bankAmt" type="number" min="1" placeholder="Amount" class="bank-amt-input">
+      </div>
+      <div style="display:flex;gap:4px;margin-top:4px">
+        <button class="ctx-action-btn bank-action" data-bank-action="deposit"  style="flex:1">Deposit</button>
+        <button class="ctx-action-btn bank-action" data-bank-action="withdraw" style="flex:1;background:#2a1800">Withdraw</button>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:6px">
+        ${[100,500,1000,5000].map(n =>
+          `<button class="ctx-action-btn bank-preset" data-preset="${n}" style="flex:1;min-width:40px;font-size:10px;padding:2px 0">$${n >= 1000 ? n/1000+'k' : n}</button>`
+        ).join('')}
+      </div>
+      <div id="bankMsg" style="font-size:10px;color:#80e080;margin-top:6px;min-height:14px"></div>`;
+  } else if (bankActiveTab === 'loan') {
+    tabContent = `
+      <div class="bank-info-row"><span>Loan Balance</span><strong style="color:${gs.bankLoan > 0 ? '#e06050' : '#80e080'}">$${loanBal}</strong></div>
+      <div style="font-size:10px;color:var(--text-dim);margin-top:8px;line-height:1.5">
+        Bank loans coming soon.<br>Credit system in development.
+      </div>`;
+  } else if (bankActiveTab === 'rob') {
+    tabContent = `
+      <div style="font-size:10px;color:var(--text-dim);margin-bottom:8px;line-height:1.5">
+        Case the security and make your move. High risk — high reward.
+      </div>
+      <button class="ctx-action-btn" onclick="goBankRob()" style="width:100%;background:#3a0000;color:#ff8080">
+        Rob the Bank
+      </button>`;
+  }
+
+  lp.innerHTML = `
+    <div class="char-info" style="display:flex;flex-direction:column;height:100%;padding:4px">
+      <div class="lp-divider-lbl" style="margin-bottom:6px">Bank</div>
+      <div class="bank-tabs" style="display:flex;gap:3px;margin-bottom:8px">
+        ${tabBtn('account','Account')}
+        ${tabBtn('loan','Loan')}
+        ${tabBtn('rob','Rob')}
+      </div>
+      ${tabContent}
+    </div>`;
+
+  // Tab switching
+  lp.querySelectorAll('.bank-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      bankActiveTab = btn.dataset.bankTab;
+      renderBankPanel();
+    });
+  });
+
+  // Preset buttons fill input
+  lp.querySelectorAll('.bank-preset').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const inp = document.getElementById('bankAmt');
+      if (inp) inp.value = btn.dataset.preset;
+    });
+  });
+
+  // Deposit / Withdraw
+  lp.querySelectorAll('.bank-action').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const inp = document.getElementById('bankAmt');
+      const amt = inp ? parseInt(inp.value) : 0;
+      const msgEl = document.getElementById('bankMsg');
+      const action = btn.dataset.bankAction;
+      const result = action === 'deposit' ? bankDeposit(gs, amt) : bankWithdraw(gs, amt);
+      if (result.ok) {
+        renderHUD();
+        if (msgEl) { msgEl.style.color = '#80e080'; msgEl.textContent = result.msg; }
+        renderBankPanel(); // refresh balance
+      } else {
+        if (msgEl) { msgEl.style.color = '#e08080'; msgEl.textContent = result.msg; }
+      }
+    });
+  });
+}
+
+function goBankRob() {
+  // TODO: navigate to crime.html with bank robbery context
+  const msgEl = document.getElementById('msgText');
+  msgEl.innerHTML += `<p>Bank robbery — coming soon.</p>`;
+  msgEl.scrollTop = msgEl.scrollHeight;
+}
+
+// ── Sub-renderer: Airport ─────────────────────────────────────────────────────
+function renderAirportPanel() {
+  const lp = document.getElementById('leftPanel');
+  const curCity = CITIES.find(c => c.id === gs.currentCity) || CITIES[0];
+  const av = (gs.activeVehicles && gs.activeVehicles[0]) || null;
+  const canDrive = !!av;
+
+  lp.innerHTML = `
+    <div class="char-info" style="display:flex;flex-direction:column;height:100%;padding:4px">
+      <div class="lp-divider-lbl" style="margin-bottom:6px">Travel</div>
+      <div class="ap-airport-img" style="width:100%;aspect-ratio:4/3;background:var(--bg-dark);border:1px solid var(--border-dark);overflow:hidden;margin-bottom:6px;position:relative;">
+        <img src="Graphics/UI_elements/map_usa.bmp"
+             style="width:100%;height:100%;object-fit:cover;object-position:30% 50%;opacity:0.7"
+             onerror="this.parentElement.style.display='none'">
+        <div style="position:absolute;inset:0;background:rgba(0,0,0,0.45);pointer-events:none;"></div>
+      </div>
+      <div style="font-family:'Oswald',sans-serif;font-size:11px;color:var(--text-light);line-height:1.4;margin-bottom:2px">
+        ${curCity.name.split(',')[0]} Travel Hub
+      </div>
+      <div style="font-size:9px;color:var(--text-dim);margin-bottom:8px">${curCity.name}</div>
+      <div style="margin-top:auto;display:flex;flex-direction:column;gap:5px">
+        <button class="ctx-action-btn" style="background:#1a3a1a;color:#80e080;border-color:#2a5a2a"
+                onclick="window.location.href='airport.html'">
+          ✈ Fly To City — $500
+        </button>
+        <button class="ctx-action-btn ${canDrive ? '' : 'disabled'}"
+                style="${canDrive ? 'background:#1a2a3a;color:#80c0e0;border-color:#2a4a5a' : 'opacity:0.4;pointer-events:none'}"
+                ${canDrive ? "onclick=\"window.location.href='drive.html'\"" : 'disabled'}>
+          🚗 Drive To City — Free
+        </button>
+        ${!canDrive ? `<div style="font-size:9px;color:var(--text-dim);text-align:center">Need an active vehicle to drive</div>` : ''}
+      </div>
+    </div>`;
+}
+
+// ── Sub-renderer: Dealer NPC ──────────────────────────────────────────────────
+// State for current dealer session (stock generated once per visit)
+let _dealerNpcStock = null;
+let _dealerNpcId    = null;
+
+function renderDealerNpcPanel(ic) {
+  const lp  = document.getElementById('leftPanel');
+  const npc = (gs.dealerNPCs || []).find(d => d.cityId === gs.currentCity);
+  if (!npc) { lp.innerHTML = `<div class="char-info" style="padding:8px;color:var(--text-dim)">No dealer available.</div>`; return; }
+
+  // Generate stock once per open, reset on new ic or new npc
+  if (_dealerNpcId !== npc.id) {
+    _dealerNpcId    = npc.id;
+    _dealerNpcStock = getDealerStock(gs, npc.id);
+  }
+
+  const favorLabel = npc.favor >= 61 ? 'Trusted' : npc.favor >= 31 ? 'Friendly' : npc.favor >= 11 ? 'Neutral' : 'Cold';
+  const favorPct   = Math.round((npc.favor || 0) / 100 * 100);
+
+  const stockRows = _dealerNpcStock.map((pkg, i) => {
+    const def = getItem(pkg.itemIndex);
+    if (!def) return '';
+    return `<div class="dnpc-pkg" data-pkg-idx="${i}" style="display:flex;align-items:center;gap:4px;padding:3px 4px;border-bottom:1px solid var(--border-dark);cursor:pointer;font-size:10px">
+      <span style="flex:1;color:var(--text-light)">${def.name}</span>
+      <span style="color:#c8a040">×${pkg.qty}</span>
+      <span style="color:#80e080;width:42px;text-align:right">$${pkg.price.toLocaleString()}</span>
+    </div>`;
+  }).join('');
+
+  lp.innerHTML = `
+    <div class="char-info" style="display:flex;flex-direction:column;height:100%;padding:4px">
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
+        <img src="${npc.portrait}" style="width:36px;height:36px;object-fit:cover;border:1px solid var(--border-dark)" onerror="this.style.opacity='0.2'">
+        <div>
+          <div style="font-family:'Oswald',sans-serif;font-size:12px;color:#ffd080">${npc.name}</div>
+          <div style="font-size:9px;color:var(--text-dim)">${favorLabel} · ${npc.favor || 0} favor</div>
+          <div style="width:60px;height:4px;background:#2a1800;border-radius:2px;margin-top:2px">
+            <div style="width:${favorPct}%;height:100%;background:#c87030;border-radius:2px"></div>
+          </div>
+        </div>
+      </div>
+      <div class="lp-divider-lbl" style="margin-bottom:3px">Stock</div>
+      <div id="dnpcStockList" style="flex:1;overflow-y:auto">${stockRows || '<div style="padding:4px;color:var(--text-dim);font-size:10px">No stock today.</div>'}</div>
+      <div id="dnpcDetail" style="margin-top:4px"></div>
+    </div>`;
+
+  // Package click → show detail + haggle/buy buttons
+  document.getElementById('dnpcStockList').addEventListener('click', e => {
+    const row = e.target.closest('.dnpc-pkg');
+    if (!row) return;
+    const pkgIdx = parseInt(row.dataset.pkgIdx);
+    const pkg    = _dealerNpcStock[pkgIdx];
+    if (!pkg) return;
+    const def = getItem(pkg.itemIndex);
+    const detail = document.getElementById('dnpcDetail');
+    const imgPath = `Graphics/drugs/${def.name.replace(/\s*\((\w+)\)/, '_$1').toLowerCase()}.png`;
+    detail.innerHTML = `
+      <hr class="lp-divider">
+      <img src="${imgPath}" style="width:100%;height:80px;object-fit:contain;display:block;margin-bottom:4px" onerror="this.style.display='none'">
+      <div style="font-size:10px;color:var(--text-light);margin-bottom:3px">${def.name} — $${pkg.price.toLocaleString()}</div>
+      <div style="display:flex;gap:4px">
+        <button class="ctx-action-btn" style="flex:1;font-size:9px" id="dnpcHaggle">Haggle</button>
+        <button class="ctx-action-btn" style="flex:1;font-size:9px;background:#1a3a1a;color:#80e080;border-color:#2a5a2a" id="dnpcBuy">Buy $${pkg.price.toLocaleString()}</button>
+      </div>`;
+
+    document.getElementById('dnpcHaggle').onclick = () => {
+      const offer = Math.floor(pkg.price * 0.75);
+      const res   = haggleWithDealer(gs, npc.id, pkgIdx, offer);
+      if (res.ok) {
+        pkg.price = res.finalPrice;
+        document.getElementById('dnpcBuy').textContent = `Buy $${pkg.price.toLocaleString()}`;
+        detail.querySelector('div').textContent = `${def.name} — $${pkg.price.toLocaleString()}`;
+      }
+      logMsg(res.msg);
+    };
+
+    document.getElementById('dnpcBuy').onclick = () => {
+      const res = buyDrugs(gs, npc.id, pkg.itemIndex, pkg.price);
+      logMsg(res.msg);
+      if (res.ok) {
+        _dealerNpcStock.splice(pkgIdx, 1);
+        renderHUD();
+        renderDealerNpcPanel(ic); // refresh
+      }
+    };
+  });
+}
+
+// ── Sub-renderer: Steal Pool ──────────────────────────────────────────────────
+function renderStealPanel(ic, pool) {
+  currentLocation = ic;
+  currentPool     = pool;
+  selectedVehicle = null;
+
+  const lp = document.getElementById('leftPanel');
+
+  const slots = pool.map((v, i) => {
+    const scale = 0.5, sw = Math.round(640*scale), sh = Math.round(48*scale), fx = Math.round((v.frameX||0)*scale);
+    return `<div class="dealer-slot bp-slot steal-pool-slot" data-pool-idx="${i}" style="width:31px;height:31px;cursor:pointer" title="${v.name}">
+      <div style="width:100%;height:100%;background:url('${v.img}') -${fx}px 50%/${sw}px ${sh}px no-repeat"></div>
+    </div>`;
+  }).join('');
+  const empty = Array(Math.max(0, 6 - pool.length)).fill('<div class="bp-slot inactive" style="width:31px;height:31px"></div>').join('');
+
+  lp.innerHTML = `
+    <div class="char-info" style="display:flex;flex-direction:column;height:100%;padding:4px">
+      <div id="stealInfoZone" style="flex:0 0 auto;overflow:hidden;color:#c8a96e;font-size:10px;display:flex;align-items:center;justify-content:center;opacity:0.5;font-family:'Oswald',sans-serif;letter-spacing:0.3px;min-height:24px">
+        ${ic.label} — ${ic.desc}
+      </div>
+      <div style="margin-top:auto">
+        <hr class="lp-divider">
+        <div class="lp-divider-lbl">Vehicles</div>
+        <div class="inv-grid bp-grid char-info steal-pool-grid" id="stealPoolGrid" style="gap:1px">${slots}${empty}</div>
+      </div>
+    </div>`;
+
+  document.getElementById('stealPoolGrid').addEventListener('click', e => {
+    const slot = e.target.closest('.steal-pool-slot');
+    if (!slot) return;
+    const idx = parseInt(slot.dataset.poolIdx);
+    if (isNaN(idx) || idx >= pool.length) return;
+    selectedVehicle = pool[idx];
+    renderStealDetail(selectedVehicle, ic);
+    document.querySelectorAll('.steal-pool-slot').forEach(s => s.classList.remove('selected'));
+    slot.classList.add('selected');
+  });
+}
+
+function renderStealDetail(v, ic) {
+  const zone = document.getElementById('stealInfoZone');
+  if (!zone) return;
+  const method = ic && ic.type === 'highway' ? 'Hijack' : 'Steal';
+  const scale = 167/64, sw = Math.round(640*scale), sh = Math.round(48*scale), fx = Math.round((v.frameX||0)*scale);
+  const cond = v.condition || 50;
+  zone.style.opacity = '1';
+  zone.style.display = 'block';
+  zone.style.alignItems = 'flex-start';
+  zone.style.justifyContent = 'flex-start';
+  zone.innerHTML = `
+    <div style="width:100%">
+      <div style="width:100%;height:${sh}px;background:url('${v.img}') -${fx}px center/${sw}px ${sh}px no-repeat;margin-bottom:3px"></div>
+      <div style="font-family:'Oswald',sans-serif;font-size:11px;color:#ffd080;margin-bottom:1px;line-height:1.2">${v.name}</div>
+      <div style="font-size:9px;color:#a08060;margin-bottom:3px">$${(v.price||0).toLocaleString()} · ${v.spec||v.body||''}</div>
+      <div style="display:flex;gap:3px;align-items:center;font-size:9px;margin-bottom:2px">
+        <span style="width:24px;color:#a08060;font-family:'Oswald',sans-serif">Cond</span>
+        <div style="flex:1;height:5px;background:#2a1800;border-radius:2px"><div style="width:${cond}%;height:100%;background:#e05020;border-radius:2px"></div></div>
+        <span style="width:18px;text-align:right;color:var(--text-light)">${cond}</span>
+      </div>
+      <div style="display:flex;gap:3px;align-items:center;font-size:9px;margin-bottom:2px">
+        <span style="width:24px;color:#a08060;font-family:'Oswald',sans-serif">Lock</span>
+        <div style="flex:1;height:5px;background:#2a1800;border-radius:2px"><div style="width:${Math.min(100,v.lockDef||0)}%;height:100%;background:#5080e0;border-radius:2px"></div></div>
+        <span style="width:18px;text-align:right;color:var(--text-light)">${v.lockDef||0}</span>
+      </div>
+      <div style="display:flex;gap:3px;align-items:center;font-size:9px;margin-bottom:2px">
+        <span style="width:24px;color:#a08060;font-family:'Oswald',sans-serif">Elec</span>
+        <div style="flex:1;height:5px;background:#2a1800;border-radius:2px"><div style="width:${Math.min(100,v.elecDef||0)}%;height:100%;background:#20a0c0;border-radius:2px"></div></div>
+        <span style="width:18px;text-align:right;color:var(--text-light)">${v.elecDef||0}</span>
+      </div>
+      <button class="ctx-action-btn" onclick="goToCrime()" style="margin-top:4px;width:100%;font-size:11px;padding:3px 6px">${method}</button>
+    </div>`;
+}
+
+// ── Sub-renderer: Store ───────────────────────────────────────────────────────
+let storeSelectedIndex = null;
+
+function renderStorePanel() {
+  const lp = document.getElementById('leftPanel');
+  if (!gs.shopStock || !gs.shopStock.length) { initShopStock(gs); saveState(gs); }
+
+  lp.innerHTML = `
+    <div class="store-lp">
+      <div class="lp-divider-lbl">General Info</div>
+      <div id="storeDetail" class="store-detail-top"></div>
+      <div class="lp-divider-lbl" style="margin-top:4px">Dealer's Store</div>
+      <div class="store-bp-grid" id="storeItemGrid"></div>
+    </div>`;
+
+  storeSelectedIndex = null;
+  renderStoreDetail();
+  renderStoreGrid();
+}
+
+function renderStoreDetail() {
+  const el = document.getElementById('storeDetail');
+  if (!el) return;
+
+  if (storeSelectedIndex === null) {
+    // General info state — matches CT6 "The dealer's store." intro
+    el.innerHTML = `
+      <div class="store-desc">The dealer's store.<br><br>Below is the equipment for sale. If you need something from the list, select it and click the Buy button.</div>
+      <div class="stat-row" style="margin-top:6px">
+        <span class="stat-name">Favor</span>
+        <div class="stat-track"><div class="stat-fill b" style="width:0%"></div></div>
+        <span class="stat-val">0</span>
+      </div>`;
+    return;
+  }
+
+  const item = ITEMS_DATA.find(i => i.index === storeSelectedIndex);
+  if (!item) return;
+
+  const imgSrc     = `Graphics/items_full/TOOL${String(item.index).padStart(2,'0')}.bmp`;
+  const slotLabel  = item.slot.replace(/_/g,' ');
+  const cantAfford = gs.cash < item.buy;
+  const bagFull    = gs.inventory.length >= 12;
+  const disabled   = cantAfford || bagFull ? 'disabled' : '';
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:4px">
+      <img src="${imgSrc}" class="store-item-img" alt="${item.name}">
+      <span style="font-family:'Oswald',sans-serif;font-size:11px;color:#ffd080;margin-left:auto">$${item.buy.toLocaleString()}</span>
+    </div>
+    <div class="store-desc"><strong>${item.name}.</strong><br>Use it to steal vehicles requiring ${slotLabel}.<br><br>Works in: ${slotLabel}</div>
+    <button class="btn btn-go store-buy-btn" id="storeBuyBtn" ${disabled}>Buy</button>`;
+
+  document.getElementById('storeBuyBtn').addEventListener('click', () => {
+    const itm = ITEMS_DATA.find(i => i.index === storeSelectedIndex);
+    if (!itm || gs.cash < itm.buy || gs.inventory.length >= 12) return;
+    gs.cash -= itm.buy;
+    addItemToInventory(gs, storeSelectedIndex);
+    document.getElementById('cash').textContent = '$' + gs.cash.toLocaleString();
+    renderStoreDetail();  // refresh button state
+    renderStoreGrid();    // refresh cant-afford dimming
+  });
+}
+
+function renderStoreGrid() {
+  const grid = document.getElementById('storeItemGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  for (const idx of gs.shopStock) {
+    const item = ITEMS_DATA.find(i => i.index === idx);
+    if (!item) continue;
+    const imgSrc  = `Graphics/items_medium/STOOL${String(item.index).padStart(2,'0')}.bmp`;
+    const slot    = document.createElement('div');
+    slot.className = 'store-grid-slot bp-slot' +
+      (item.index === storeSelectedIndex ? ' selected' : '') +
+      (gs.cash < item.buy ? ' cant-afford' : '');
+    slot.dataset.storeIdx = item.index;
+    slot.title = `${item.name} — $${item.buy.toLocaleString()}`;
+    slot.innerHTML = `<img src="${imgSrc}" alt="${item.name}">`;
+    grid.appendChild(slot);
+  }
+  // Fill remaining slots to complete the grid
+  const filled = gs.shopStock.length;
+  const total  = Math.ceil(filled / 4) * 4;
+  for (let i = filled; i < total; i++) {
+    const empty = document.createElement('div');
+    empty.className = 'store-grid-slot bp-slot inactive';
+    grid.appendChild(empty);
+  }
+}
+
+// ── Module-level selection state ──────────────────────────────────────────────
+let currentPool     = null;
+let currentLocation = null;
+let selectedVehicle = null;
+let dealerVehicle   = null;   // vehicle selected in dealer panel
+let dealerMode      = null;   // 'garage' | 'lot'
+let dealerPanelOpen = false;  // true while dealer left panel is active
+
+// ── Sub-renderer: Dealer ──────────────────────────────────────────────────────
+function renderDealerPanel() {
+  dealerVehicle = null; dealerMode = null; dealerPanelOpen = true;
+  const lp = document.getElementById('leftPanel');
+
+  const cars = gs.dealerLot || [];
+  // 12 slots, same size as backpack (31×31, 4 cols)
+  const slots = Array.from({ length: 12 }, (_, i) => {
+    const v = cars[i];
+    if (!v) return `<div class="dealer-slot bp-slot inactive" style="width:31px;height:31px"></div>`;
+    const scale = 0.5, sw = Math.round(640*scale), sh = Math.round(48*scale), fx = Math.round((v.frameX||0)*scale);
+    return `<div class="dealer-slot bp-slot" data-dealer-mode="lot" data-dealer-idx="${i}" style="width:31px;height:31px;cursor:pointer" title="${v.name}">
+      <div style="width:100%;height:100%;background:url('${v.img}') -${fx}px 50%/${sw}px ${sh}px no-repeat"></div>
+    </div>`;
+  }).join('');
+
+  lp.innerHTML = `
+    <div class="char-info" style="display:flex;flex-direction:column;height:100%;padding:4px">
+      <div id="dealerInfoZone" style="flex:0 0 auto;overflow:hidden;color:#c8a96e;font-size:10px;display:flex;align-items:center;justify-content:center;opacity:0.5;font-family:'Oswald',sans-serif;letter-spacing:0.3px;min-height:24px">
+        Select a vehicle
+      </div>
+      <div style="margin-top:auto">
+        <hr class="lp-divider">
+        <div class="lp-divider-lbl">Dealer Lot</div>
+        <div class="inv-grid bp-grid char-info" style="gap:1px">${slots}</div>
+      </div>
+    </div>`;
+}
+
+function renderDealerDetail(v, mode) {
+  dealerVehicle = v; dealerMode = mode;
+  const zone = document.getElementById('dealerInfoZone');
+  if (!zone) return;
+
+  // Scale one frame (64px) to fill panel width (175px - 8px padding = 167px)
+  const scale = 167/64, sw = Math.round(640*scale), sh = Math.round(48*scale), fx = Math.round((v.frameX||0)*scale);
+  const cond = v.condition || 50;
+  const sellPrice = Math.round((v.price||0) * (cond/100));
+  const buyPrice  = Math.round(sellPrice * 1.10);
+  const canBuy    = gs.cash >= buyPrice && (gs.garage||[]).length < 12;
+
+  const actionBtn = mode === 'garage'
+    ? `<button class="ctx-action-btn" onclick="sellToDealer()" style="margin-top:4px;width:100%;background:#3a1e00;color:#ffd080;font-size:11px;padding:3px 6px">Sell — $${sellPrice.toLocaleString()}</button>`
+    : `<button class="ctx-action-btn" onclick="buyBackFromDealer()" style="margin-top:4px;width:100%;font-size:11px;padding:3px 6px${canBuy?'':';opacity:0.5'}" ${canBuy?'':'disabled'}>Buy Back — $${buyPrice.toLocaleString()}</button>`;
+
+  zone.style.opacity = '1';
+  zone.style.display = 'block';
+  zone.style.alignItems = 'flex-start';
+  zone.style.justifyContent = 'flex-start';
+  zone.innerHTML = `
+    <div style="width:100%">
+      <div style="width:100%;height:${sh}px;background:url('${v.img}') -${fx}px center/${sw}px ${sh}px no-repeat;margin-bottom:3px"></div>
+      <div style="font-family:'Oswald',sans-serif;font-size:11px;color:#ffd080;margin-bottom:1px;line-height:1.2">${v.name}</div>
+      <div style="font-size:9px;color:#a08060;margin-bottom:3px">$${(v.price||0).toLocaleString()} · ${v.spec||''}</div>
+      <div style="display:flex;gap:3px;align-items:center;font-size:9px;margin-bottom:2px">
+        <span style="width:24px;color:#a08060;font-family:'Oswald',sans-serif">Cond</span>
+        <div style="flex:1;height:5px;background:#2a1800;border-radius:2px"><div style="width:${cond}%;height:100%;background:#e05020;border-radius:2px"></div></div>
+        <span style="width:18px;text-align:right;color:var(--text-light)">${cond}</span>
+      </div>
+      <div style="display:flex;gap:3px;align-items:center;font-size:9px;margin-bottom:2px">
+        <span style="width:24px;color:#a08060;font-family:'Oswald',sans-serif">Lock</span>
+        <div style="flex:1;height:5px;background:#2a1800;border-radius:2px"><div style="width:${Math.min(100,v.lockDef||0)}%;height:100%;background:#5080e0;border-radius:2px"></div></div>
+        <span style="width:18px;text-align:right;color:var(--text-light)">${v.lockDef||0}</span>
+      </div>
+      <div style="display:flex;gap:3px;align-items:center;font-size:9px;margin-bottom:2px">
+        <span style="width:24px;color:#a08060;font-family:'Oswald',sans-serif">Elec</span>
+        <div style="flex:1;height:5px;background:#2a1800;border-radius:2px"><div style="width:${Math.min(100,v.elecDef||0)}%;height:100%;background:#20a0c0;border-radius:2px"></div></div>
+        <span style="width:18px;text-align:right;color:var(--text-light)">${v.elecDef||0}</span>
+      </div>
+      ${actionBtn}
+    </div>`;
+
+  // Move .selected highlight to clicked slot
+  document.querySelectorAll('.dealer-slot.selected').forEach(s => s.classList.remove('selected'));
+  const arr = mode === 'lot' ? (gs.dealerLot||[]) : (gs.garage||[]);
+  const idx = arr.findIndex(x => x.uid === v.uid);
+  const allSlots = document.querySelectorAll(`.dealer-slot[data-dealer-mode="${mode}"]`);
+  if (allSlots[idx]) allSlots[idx].classList.add('selected');
+}
+
+function sellToDealer() {
+  const v = dealerVehicle;
+  if (!v || dealerMode !== 'garage') return;
+  const price = Math.round((v.price || 0) * ((v.condition || 50) / 100));
+  gs.cash += price;
+  gs.garage = gs.garage.filter(x => x.uid !== v.uid);
+  if (!gs.dealerLot) gs.dealerLot = [];
+  gs.dealerLot.push(v);
+  saveState(gs); renderHUD(); renderGarage();
+  renderDealerPanel();
+}
+
+function buyBackFromDealer() {
+  const v = dealerVehicle;
+  if (!v || dealerMode !== 'lot') return;
+  const price = Math.round((v.price || 0) * ((v.condition || 50) / 100) * 1.10);
+  if (gs.cash < price || (gs.garage || []).length >= 12) return;
+  gs.cash -= price;
+  gs.dealerLot = gs.dealerLot.filter(x => x.uid !== v.uid);
+  if (!gs.garage) gs.garage = [];
+  gs.garage.push(v);
+  saveState(gs); renderHUD(); renderGarage();
+  renderDealerPanel();
+}
+
+// ── Sub-renderer: Race ───────────────────────────────────────────────────────
+function renderRacePanel(ic, pool) {
+  currentLocation = ic;
+  currentPool     = pool;
+  selectedVehicle = null;
+
+  const lp = document.getElementById('leftPanel');
+
+  const slots = pool.map((v, i) => {
+    const scale = 0.5, sw = Math.round(640*scale), sh = Math.round(48*scale), fx = Math.round((v.frameX||0)*scale);
+    return `<div class="dealer-slot bp-slot race-pool-slot" data-pool-idx="${i}" style="width:31px;height:31px;cursor:pointer" title="${v.name}">
+      <div style="width:100%;height:100%;background:url('${v.img}') -${fx}px 50%/${sw}px ${sh}px no-repeat"></div>
+    </div>`;
+  }).join('');
+  const empty = Array(Math.max(0, 6 - pool.length)).fill('<div class="bp-slot inactive" style="width:31px;height:31px"></div>').join('');
+
+  lp.innerHTML = `
+    <div class="char-info" style="display:flex;flex-direction:column;height:100%;padding:4px">
+      <div id="raceInfoZone" style="flex:0 0 auto;overflow:hidden;display:flex;align-items:center;justify-content:space-between;min-height:24px;padding:2px 0">
+        <span style="font-family:'Oswald',sans-serif;font-size:11px;color:#c8a96e;opacity:0.6;letter-spacing:0.3px">Racing Area</span>
+        <button class="help" onclick="showRaceHelp()" style="margin-left:4px;flex-shrink:0">?</button>
+      </div>
+      <div style="margin-top:auto">
+        <hr class="lp-divider">
+        <div class="lp-divider-lbl">Opponents</div>
+        <div class="inv-grid bp-grid char-info race-pool-grid" id="racePoolGrid" style="gap:1px">${slots}${empty}</div>
+      </div>
+    </div>`;
+
+  document.getElementById('racePoolGrid').addEventListener('click', e => {
+    const slot = e.target.closest('.race-pool-slot');
+    if (!slot) return;
+    const idx = parseInt(slot.dataset.poolIdx);
+    if (isNaN(idx) || idx >= pool.length) return;
+    selectedVehicle = pool[idx];
+    renderRaceDetail(selectedVehicle);
+    document.querySelectorAll('.race-pool-slot').forEach(s => s.classList.remove('selected'));
+    slot.classList.add('selected');
+  });
+}
+
+function renderRaceDetail(v) {
+  const zone = document.getElementById('raceInfoZone');
+  if (!zone) return;
+  const av = gs.activeVehicles && gs.activeVehicles[0];
+  const canRace = !!av;
+  const scale = 167/64, sw = Math.round(640*scale), sh = Math.round(48*scale), fx = Math.round((v.frameX||0)*scale);
+  zone.style.display = 'block';
+  zone.style.alignItems = 'flex-start';
+  zone.style.justifyContent = 'flex-start';
+  zone.innerHTML = `
+    <div style="width:100%">
+      <div style="width:100%;height:${sh}px;background:url('${v.img}') -${fx}px center/${sw}px ${sh}px no-repeat;margin-bottom:3px"></div>
+      <div style="font-family:'Oswald',sans-serif;font-size:11px;color:#ffd080;margin-bottom:1px;line-height:1.2">${v.name}</div>
+      <div style="font-size:9px;color:#a08060;margin-bottom:3px">$${(v.price||0).toLocaleString()} · ${v.spec||v.body||''}</div>
+      <div style="display:flex;gap:3px;align-items:center;font-size:9px;margin-bottom:3px">
+        <span style="width:30px;color:#a08060;font-family:'Oswald',sans-serif">Speed</span>
+        <div style="flex:1;height:5px;background:#2a1800;border-radius:2px"><div style="width:${Math.min(100,v.speed||0)}%;height:100%;background:#e0a020;border-radius:2px"></div></div>
+        <span style="width:18px;text-align:right;color:var(--text-light)">${v.speed||0}</span>
+      </div>
+      <div style="font-size:9px;color:var(--text-dim);margin-bottom:3px;line-height:1.5">
+        ${canRace
+          ? `Bet: <strong style="color:#ffd080">${av.name}</strong><br>Prize: <strong style="color:#80e080">${v.name}</strong>`
+          : '<span style="color:#a06050">⚠ Need active vehicle.</span>'}
+      </div>
+      <button class="ctx-action-btn" onclick="goToRace()" style="width:100%;font-size:11px;padding:3px 6px;${canRace ? '' : 'opacity:0.4;pointer-events:none'}" ${canRace ? '' : 'disabled'}>Race</button>
+    </div>`;
+}
+
+function showRaceHelp() {
+  const existing = document.getElementById('raceHelpTooltip');
+  if (existing) { existing.remove(); return; }
+  const tip = document.createElement('div');
+  tip.id = 'raceHelpTooltip';
+  tip.style.cssText = 'position:absolute;z-index:999;background:#1a0f00;border:1px solid #5a3a10;color:#c8a96e;font-size:10px;line-height:1.6;padding:8px 10px;width:160px;border-radius:3px;box-shadow:0 2px 8px #0008';
+  tip.innerHTML = `The place to meet other racers, every night.<br><br>
+    Race against a particular car — the prize is the opponent's vehicle. Your active vehicle is the bet.<br><br>
+    <span style="color:#a08060">Select an opponent below to begin.</span>
+    <div style="text-align:right;margin-top:6px"><button class="help" onclick="document.getElementById('raceHelpTooltip').remove()">✕</button></div>`;
+  const btn = document.querySelector('#raceInfoZone .help');
+  if (btn) {
+    const r = btn.getBoundingClientRect();
+    const wrap = document.querySelector('.window') || document.body;
+    const wr = wrap.getBoundingClientRect();
+    tip.style.left = (r.left - wr.left - 160 + btn.offsetWidth) + 'px';
+    tip.style.top  = (r.bottom - wr.top + 4) + 'px';
+    wrap.appendChild(tip);
+  }
+  document.addEventListener('click', function dismiss(e) {
+    if (!tip.contains(e.target) && e.target.id !== 'raceHelpBtn') {
+      tip.remove(); document.removeEventListener('click', dismiss);
+    }
+  }, { capture: true });
+}
+
+function goToRace() {
+  const av = gs.activeVehicles && gs.activeVehicles[0];
+  if (!av || !selectedVehicle) return;
+  initRace(gs, av, selectedVehicle);
+  gs = loadState(); // pick up currentRace written by initRace
+  window.location.href = 'race.html';
+}
+
+function goToCrime() {
+  if (!currentLocation || !selectedVehicle) return;
+  const method = currentLocation.type === 'highway' ? 'hijack' : 'steal';
+  const target = {
+    locId:   currentLocation.id,
+    type:    currentLocation.type,
+    label:   currentLocation.label,
+    method,
+    desc:    currentLocation.desc,
+    vehicle: selectedVehicle,
+  };
+
+  if (IS_MP && mpWs && mpWs.readyState === 1) {
+    // In multiplayer: claim the vehicle on the server first.
+    // Server removes it from the shared pool atomically — prevents two players
+    // stealing the same car. Navigate only on ack; show message on nack.
+    const stealBtn = document.querySelector('.ctx-action-btn');
+    if (stealBtn) { stealBtn.disabled = true; stealBtn.textContent = 'Claiming...'; }
+    mpWs.send(JSON.stringify({ type:'steal_claim', locId: target.locId, uid: selectedVehicle.uid }));
+    // Response handled in mpHandleMsg — sets sessionStorage and navigates on ack
+    sessionStorage.setItem('targetLocation', JSON.stringify(target));
+  } else {
+    // Single-player: navigate immediately
+    sessionStorage.setItem('targetLocation', JSON.stringify(target));
+    window.location.href = 'crime.html';
+  }
+}
+
+function sellActiveVehicle(avIdx) {
+  avIdx = (avIdx !== '' && avIdx !== undefined) ? Number(avIdx) : 0;
+  const v = gs.activeVehicles[avIdx];
+  if (!v) return;
+  const sellPrice = Math.round((v.price || 0) * ((v.condition || 50) / 100));
+  gs.cash += sellPrice;
+  gs.activeVehicles[avIdx] = null;
+  if (!gs.dealerLot) gs.dealerLot = [];
+  gs.dealerLot.push(v);
+  saveState(gs);
+  renderHUD(); renderActiveTeam();
+  document.getElementById('leftPanel').innerHTML = '';
+  if (dealerPanelOpen) renderDealerPanel();
+  logMsg(`Sold ${v.name} for $${sellPrice.toLocaleString()}.`);
+}
+
+// ── GARAGE RENDER ─────────────────────────────────────────────────────────────
+function renderGarage() {
+  const el = document.getElementById('garage');
+  if (!el) return;
+  el.innerHTML = '';
+  const cars = Array.isArray(gs.garage) ? gs.garage : [];
+  for (let i = 0; i < 6; i++) {
+    const slot = document.createElement('div');
+    const v = cars[i];
+    if (v) {
+      const scale = 0.5;
+      const sw = Math.round(640 * scale);
+      const sh = Math.round(48 * scale);
+      const fx = Math.round((v.frameX || 0) * scale);
+      slot.className = 'rp-slot';
+      slot.title = v.name;
+      slot.style.cursor = 'pointer';
+      slot.draggable = true;
+      slot.addEventListener('dragstart', () => { dragSrc = { type: 'garage', idx: i }; });
+      slot.addEventListener('click', () => {
+        if (!dealerPanelOpen) renderDealerPanel();
+        renderDealerDetail(v, 'garage');
+      });
+      slot.innerHTML = `<div style="width:100%;height:100%;background:url('${v.img}') -${fx}px 50%/${sw}px ${sh}px no-repeat"></div>`;
+    } else {
+      slot.className = 'rp-slot' + (i > 0 ? ' inactive' : '');
+    }
+    // Drop target: accepts activeVehicle drags
+    slot.addEventListener('dragover',  e => { if (dragSrc?.type === 'activeVehicle') { e.preventDefault(); slot.style.outline = '2px solid #ffd080'; } });
+    slot.addEventListener('dragleave', () => slot.style.outline = '');
+    slot.addEventListener('drop', e => {
+      e.preventDefault(); slot.style.outline = '';
+      if (dragSrc?.type !== 'activeVehicle') return;
+      const avIdx = dragSrc.avIdx;
+      const av = gs.activeVehicles[avIdx]; if (!av) return;
+      const gv = cars[i];
+      gs.activeVehicles[avIdx] = gv || null;
+      if (gv) gs.garage[i] = av; else { gs.garage.push(av); }
+      gs.garage = gs.garage.filter(Boolean);
+      saveState(gs); renderActiveTeam(); renderGarage(); dragSrc = null;
+    });
+    el.appendChild(slot);
+  }
+}
+renderGarage();
+
+// ── HIDEOUT RENDER ────────────────────────────────────────────────────────────
+function renderHideout() {
+  const el = document.getElementById('hideout');
+  if (!el) return;
+  el.innerHTML = '';
+  const HIDEOUT_SLOTS = 5;
+  const atHideout = (gs.contacts || []).filter(c => c.status === 'hired' && c.assignedLocation === 'hideout');
+
+  // Slot 0 — always the player slot
+  const playerSlot = document.createElement('div');
+  if (gs.playerAtHideout) {
+    playerSlot.className = 'rp-slot';
+    playerSlot.title = `${gs.playerName} — drag to Active Team to return`;
+    playerSlot.style.cursor = 'grab';
+    playerSlot.draggable = true;
+    if (portraitSrc) playerSlot.innerHTML = `<img src="${portraitSrc}" onerror="this.style.opacity='0'">`;
+    playerSlot.addEventListener('dragstart', () => { dragSrc = { type: 'hideout-player' }; });
+  } else {
+    playerSlot.className = 'rp-slot inactive';
+  }
+  // Accept player drags → send player to hideout
+  playerSlot.addEventListener('dragover', e => {
+    if (dragSrc?.type === 'player') { e.preventDefault(); playerSlot.style.outline = '2px solid #ffd080'; }
+  });
+  playerSlot.addEventListener('dragleave', () => playerSlot.style.outline = '');
+  playerSlot.addEventListener('drop', e => {
+    e.preventDefault(); playerSlot.style.outline = '';
+    if (dragSrc?.type !== 'player') return;
+    gs.playerAtHideout = true;
+    saveState(gs); renderActiveTeam(); renderHideout(); dragSrc = null;
+    logMsg('You went to the hideout.');
+  });
+  el.appendChild(playerSlot);
+
+  // Slots 1–5 — crew
+  for (let i = 0; i < HIDEOUT_SLOTS - 1; i++) {
+    const slot = document.createElement('div');
+    const member = atHideout[i];
+    if (member) {
+      slot.className = 'rp-slot';
+      slot.title = `${member.name} — drag to Active Team to recall`;
+      slot.style.cursor = 'grab';
+      slot.draggable = true;
+      slot.innerHTML = `<img src="${member.portrait}" onerror="this.style.opacity='0.2'">`;
+      slot.addEventListener('dragstart', () => { dragSrc = { type: 'hideout', id: member.id }; });
+    } else {
+      slot.className = 'rp-slot inactive';
+    }
+    // Accept crew drags → assign to hideout
+    slot.addEventListener('dragover', e => {
+      if (dragSrc?.type === 'crew') { e.preventDefault(); slot.style.outline = '2px solid #ffd080'; }
+    });
+    slot.addEventListener('dragleave', () => slot.style.outline = '');
+    slot.addEventListener('drop', e => {
+      e.preventDefault(); slot.style.outline = '';
+      if (dragSrc?.type !== 'crew') return;
+      const result = assignToHideout(gs, dragSrc.id);
+      logMsg(result.msg);
+      if (result.ok) { gs = loadState(); renderActiveTeam(); renderHideout(); renderHUD(); }
+      dragSrc = null;
+    });
+    el.appendChild(slot);
+  }
+}
+renderHideout();
+
+function driveToCity() {
+  saveState(gs);
+  window.location.href = 'drive.html';
+}
+
+// Delegated listener: clicking a vehicle slot in right context panel selects it
+document.getElementById('rightCtxSection').addEventListener('click', e => {
+  if (!currentPool) return;
+  const slot = e.target.closest('.rp-slot');
+  if (!slot || slot.dataset.poolIdx === undefined) return;
+  const idx = parseInt(slot.dataset.poolIdx);
+  if (isNaN(idx) || idx >= currentPool.length) return;
+  selectedVehicle = currentPool[idx];
+  renderLeftPanel({ type: 'vehicle', data: { vehicle: selectedVehicle, location: currentLocation } });
+});
+
+// Left panel starts blank — populated when player clicks their portrait in Active Team
+
+// ── MAP ICON HELPERS ──────────────────────────────────────────────────────────
+// map_icons/ — individual PNGs sliced from mapgroups01/02.bmp by slice_mapicons.py
+// sheet 1 (icon_01_XX): 0=Car Park, 1=Busy Highway, 2=Racing Area, 3=Busy Street, 4=Residential,
+//                        5=Bank, 6=Supermarket, 7=Gang, 8=Money/Lender, 9=Doctor
+// sheet 2 (icon_02_XX): 0=Skill Trainer, 1=Pawnshop, 2=Hideout, 3=Mechanic, 4=Police/Bribe,
+//                        5=Fly/Airport, 6=Informer
+function spriteIcon(sheet, idx) {
+  const s = String(sheet).padStart(2,'0');
+  const i = String(idx).padStart(2,'0');
+  return `<img src="Graphics/map_icons/icon_${s}_${i}.png" style="width:38px;height:38px;image-rendering:pixelated">`;
+}
+
+// ── CITY / MAP SETUP ──────────────────────────────────────────────────────────
+// Set map background and city name from current city in state.
+function applyCityMap() {
+  const cityDef = CITIES.find(c => c.id === gs.currentCity) || CITIES[0];
+  const n = String(cityDef.mapImg).padStart(2, '0');
+  document.getElementById('mapBg').src = `Graphics/UI_elements/city${n}.bmp`;
+  document.getElementById('cityName').textContent = cityDef.name;
+}
+applyCityMap();
+
+// ── DYNAMIC MAP ICONS ─────────────────────────────────────────────────────────
+// Icons come from the city system in game.js — getCityLocations(gs).
+// Re-running renderMapIcons() rebuilds the map (called on load and after travel).
+function renderMapIcons() {
+  const mw = document.getElementById('mapWrap');
+  // Remove old icons
+  mw.querySelectorAll('.map-icon').forEach(el => el.remove());
+
+  const mapIcons = getCityLocations(gs);
+
+  // Stealable location defs for vehicle pool init
+  const stealableTypes = ['highway','residential','busy','racing'];
+  const stealableLocDefs = mapIcons
+    .filter(ic => ic.id && stealableTypes.includes(ic.type))
+    .map(ic => ({ id: ic.id, type: ic.type }));
+
+  // Init pools for any new locations that don't have one yet
+  if (!gs.locationPools) gs.locationPools = {};
+  const missingLocs = stealableLocDefs.filter(loc => !gs.locationPools[loc.id]);
+  if (missingLocs.length) {
+    initLocationPools(gs, missingLocs);
+  }
+
+  mapIcons.forEach(ic => {
+    const d = document.createElement('div');
+    d.className = 'map-icon';
+    d.style.left = ic.x + '%'; d.style.top = ic.y + '%';
+    d.title = ic.label;
+    d.innerHTML = spriteIcon(ic.si[0], ic.si[1]);
+    d.addEventListener('click', () => {
+      const msgEl = document.getElementById('msgText');
+      msgEl.innerHTML += `<p>${ic.label} — ${ic.desc}</p>`;
+      msgEl.scrollTop = msgEl.scrollHeight;
+
+      if (stealableTypes.includes(ic.type) && ic.type !== 'racing') {
+        const pool = (gs.locationPools && gs.locationPools[ic.id]) || [];
+        renderRightContext(null);
+        renderLeftPanel({ type: 'stealPool', data: { ic, pool } });
+      } else if (ic.type === 'racing') {
+        currentLocation = ic;
+        selectedVehicle = null;
+        const pool = (gs.locationPools && gs.locationPools[ic.id]) || [];
+        currentPool = pool;
+        renderRightContext(null);
+        renderLeftPanel({ type: 'race', data: { ic, pool } });
+      } else if (ic.type === 'shop') {
+        renderLeftPanel({ type: 'store' });
+      } else if (ic.type === 'dealer') {
+        renderLeftPanel({ type: 'dealer' });
+      } else if (ic.type === 'bank') {
+        renderLeftPanel({ type: 'bank' });
+      } else if (ic.type === 'airport') {
+        renderLeftPanel({ type: 'airport' });
+      } else if (ic.type === 'dealer_npc') {
+        renderLeftPanel({ type: 'dealer_npc', data: { ic } });
+      }
+    });
+    mw.appendChild(d);
+  });
+
+  // Also update skip-day to pass current stealable locs
+  window._stealableLocDefs = stealableLocDefs;
+}
+renderMapIcons();
+
+// ── LEFT PANEL — Reset to character view on empty click ───────────────────────
+// Clicking empty map space or non-interactive UI areas resets the context panel.
+// ── BACKPACK ITEM CLICK ────────────────────────────────────────────────────────
+// Event delegation on the left panel — handles .bp-slot clicks after renderCharView().
+document.getElementById('leftPanel').addEventListener('click', e => {
+  // Dealer slot click
+  const dealerSlot = e.target.closest('[data-dealer-mode]');
+  if (dealerSlot) {
+    const mode = dealerSlot.dataset.dealerMode;
+    const idx  = parseInt(dealerSlot.dataset.dealerIdx);
+    const arr  = mode === 'garage' ? (gs.garage || []) : (gs.dealerLot || []);
+    const v    = arr[idx];
+    if (!v) return;
+    renderDealerDetail(v, mode);
+    return;
+  }
+
+  // Store grid item click
+  const storeSlot = e.target.closest('[data-store-idx]');
+  if (storeSlot) {
+    storeSelectedIndex = parseInt(storeSlot.dataset.storeIdx);
+    document.querySelectorAll('[data-store-idx]').forEach(s => s.classList.remove('selected'));
+    storeSlot.classList.add('selected');
+    const detailLbl = document.querySelector('.lp-divider-lbl');
+    if (detailLbl) detailLbl.textContent = 'Item Info';
+    renderStoreDetail();
+    return;
+  }
+
+  // Backpack item left-click — handled by contextmenu listener below
+  if (e.target.closest('.bp-slot') && !e.target.closest('.dealer-slot')) return;
+});
+
+// ── BACKPACK ITEM RIGHT-CLICK POPUP ───────────────────────────────────────────
+document.getElementById('leftPanel').addEventListener('contextmenu', e => {
+  const slot = e.target.closest('.bp-slot');
+  if (!slot || slot.classList.contains('dealer-slot')) return;
+  e.preventDefault();
+  e.stopPropagation();
+
+  const slotIdx = [...slot.parentElement.children].indexOf(slot);
+  const item = gs.inventory[slotIdx];
+  closeItemPopup();
+  if (!item) return;
+
+  // Build popup
+  const popup = document.createElement('div');
+  popup.id = 'itemPopup';
+  popup.innerHTML = `
+    <div class="ip-name">${item.label}</div>
+    <div class="ip-cat">${item.cat.replace(/_/g,' ')}</div>
+    <div class="ip-actions">
+      <button class="ip-sell" data-slot="${slotIdx}">Sell to fence — $${item.sell}</button>
+      <button class="ip-cancel">Cancel</button>
+    </div>`;
+  const r = slot.getBoundingClientRect();
+  popup.style.top  = (r.bottom + 4 + window.scrollY) + 'px';
+  popup.style.left = (r.left  + window.scrollX) + 'px';
+  document.body.appendChild(popup);
+
+  popup.querySelector('.ip-sell').addEventListener('click', () => {
+    gs.cash += item.sell;
+    removeItemFromInventory(gs, slotIdx);
+    closeItemPopup();
+    renderLeftPanel({ type: 'character' });
+    document.getElementById('cash').textContent = '$' + gs.cash.toLocaleString();
+  });
+  popup.querySelector('.ip-cancel').addEventListener('click', closeItemPopup);
+});
+
+function closeItemPopup() {
+  const p = document.getElementById('itemPopup');
+  if (p) p.remove();
+}
+
+// Close popup on outside click or right-click
+document.addEventListener('click', e => {
+  if (!e.target.closest('#itemPopup, .bp-slot')) closeItemPopup();
+});
+document.addEventListener('contextmenu', e => {
+  if (!e.target.closest('.bp-slot')) closeItemPopup();
+});
+
+const gameBody = document.querySelector('.game-body');
+gameBody.addEventListener('click', e => {
+  // Ignore clicks on interactive elements
+  if (e.target.closest('.map-icon, button, .team-slot, .hslot, .garage-slot, .bp-slot, .rp-slot, .r-section, #leftPanel')) return;
+  document.getElementById('leftPanel').innerHTML = '';
+  renderRightContext(null);
+});
+
+const mw_unused = null; // map icons rendered by renderMapIcons() above
+
+// ── MODAL SYSTEM ──────────────────────────────────────────────────────────────
+function showModal(title, bodyHTML) {
+  closeModal(); // remove any existing modal
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modalOverlay';
+  overlay.innerHTML = `
+    <div class="modal-box" id="modalBox">
+      <div class="modal-titlebar">${title}</div>
+      <div class="modal-body">${bodyHTML}</div>
+      <div class="modal-footer">
+        <button class="modal-close-btn" id="modalCloseBtn">Close</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  document.getElementById('modalCloseBtn').addEventListener('click', closeModal);
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+}
+
+function closeModal() {
+  const el = document.getElementById('modalOverlay');
+  if (el) el.remove();
+}
+
+// ── ITEM DRAG + DROP SYSTEM ───────────────────────────────────────────────────
+
+function firstEmptySlot(inv) {
+  const arr = inv || [];
+  for (let i = 0; i < 12; i++) { if (!arr[i]) return i; }
+  return -1; // full
+}
+
+function getInventory(owner, contactId) {
+  if (owner === 'player')  return gs.inventory;
+  if (owner === 'storage') return (gs.vehicleStorage = gs.vehicleStorage || new Array(6).fill(null));
+  if (owner === 'contact') {
+    const c = (gs.contacts || []).find(x => x.id === contactId);
+    if (c) { c.inventory = c.inventory || []; return c.inventory; }
+  }
+  return null;
+}
+
+function transferItem(src, dst) {
+  if (!src || !dst) return;
+  const srcInv = getInventory(src.owner, src.contactId);
+  const dstInv = getInventory(dst.owner, dst.contactId);
+  if (!srcInv || !dstInv) return;
+
+  const srcItem = srcInv[src.slot];
+  if (!srcItem) return; // nothing to move
+
+  if (gs.itemDragSwap) {
+    // Swap: exchange src and dst slots
+    const dstItem    = dstInv[dst.slot] ?? null;
+    dstInv[dst.slot] = srcItem;
+    srcInv[src.slot] = dstItem;
+  } else {
+    // Move: find first empty in dst, clear src
+    const targetSlot = (dst.slot >= 0 && !dstInv[dst.slot]) ? dst.slot : firstEmptySlot(dstInv);
+    if (targetSlot < 0) { logMsg('No room — inventory full.'); return; }
+    dstInv[targetSlot] = srcItem;
+    srcInv[src.slot]   = null;
+  }
+
+  saveState(gs);
+  renderVehicleStorage();
+
+  // Re-render left panel if it's showing a char or contact view
+  const lp = document.getElementById('leftPanel');
+  if (lp.querySelector('[data-owner]')) {
+    const ownerEl = lp.querySelector('[data-owner]');
+    const owner   = ownerEl?.dataset.owner;
+    if (owner === 'player') {
+      lp.innerHTML = renderCharView();
+    } else if (owner === 'contact') {
+      const cid = ownerEl.dataset.contactId;
+      const c   = (gs.contacts || []).find(x => x.id === cid);
+      if (c) lp.innerHTML = renderContactView(c);
+    }
+  }
+}
+
+// Global delegated listeners for bp-slot and vs-slot drag+drop
+document.addEventListener('dragstart', e => {
+  const slot = e.target.closest('.bp-slot, .vs-slot');
+  if (!slot) return;
+  const owner     = slot.dataset.owner;
+  const contactId = slot.dataset.contactId || null;
+  const slotIdx   = parseInt(slot.dataset.slot, 10);
+  const inv       = getInventory(owner, contactId);
+  if (!inv || !inv[slotIdx]) return;
+  itemDragSrc = { owner, contactId, slot: slotIdx };
+  dragSrc = null; // prevent vehicle drag from interfering
+  e.dataTransfer.effectAllowed = 'move';
+});
+
+document.addEventListener('dragover', e => {
+  const slot = e.target.closest('.bp-slot, .vs-slot');
+  if (!slot || !itemDragSrc) return;
+  e.preventDefault();
+  slot.style.outline = '2px solid #80d0ff';
+});
+
+document.addEventListener('dragleave', e => {
+  const slot = e.target.closest('.bp-slot, .vs-slot');
+  if (slot) slot.style.outline = '';
+});
+
+document.addEventListener('drop', e => {
+  const slot = e.target.closest('.bp-slot, .vs-slot');
+  if (!slot) return;
+  slot.style.outline = '';
+  if (!itemDragSrc) return;
+  e.preventDefault();
+  const dstOwner     = slot.dataset.owner;
+  const dstContactId = slot.dataset.contactId || null;
+  const dstSlot      = parseInt(slot.dataset.slot, 10);
+  transferItem(itemDragSrc, { owner: dstOwner, contactId: dstContactId, slot: dstSlot });
+  itemDragSrc = null;
+});
+
+document.addEventListener('dragend', () => { itemDragSrc = null; });
+
+// ── LEFT PANEL BUTTON DELEGATION ──────────────────────────────────────────────
+// Handles clicks on help/action buttons rendered inside the left panel.
+document.getElementById('leftPanel').addEventListener('click', e => {
+  // Character info "?" button
+  if (e.target.closest('.char-help')) {
+    const btn       = e.target.closest('.char-help');
+    const contactId = btn.dataset.contactId;
+    if (contactId) {
+      // Crew member view — show that contact's info
+      const c = (gs.contacts || []).find(x => x.id === contactId);
+      if (!c) return;
+      const profLabel  = c.profession ? c.profession.charAt(0).toUpperCase() + c.profession.slice(1) : 'Unknown';
+      const tierLabel  = c.tierLabel  || '';
+      const jailLine   = c.status === 'jailed' ? `<p style="color:#ffaaaa">⛓ Currently jailed — ${c.jailDays} day${c.jailDays !== 1 ? 's' : ''} remaining.</p>` : '';
+      const stats      = c.stats || {};
+      const skillKeys  = ['acting','shooting','hiding','driving','locksmithing','electronics'];
+      let statLines = '';
+      for (const k of skillKeys) {
+        if (stats[k]) statLines += `<br>${stats[k].label}: ${stats[k].val}`;
+      }
+      showModal('Crew Member', `
+        ${jailLine}
+        <p><strong>${c.name}</strong> — ${profLabel}, ${tierLabel}.</p>
+        <p>Pay: $${c.payAmount}/day</p>
+        ${stats.health  ? `<p>Health: ${stats.health.val} &nbsp; Disguise: ${(stats.disguise||{}).val ?? '—'}</p>` : ''}
+        <p>Skills:${statLines}</p>`);
+    } else {
+      // Player view
+      const prof      = gs.profession || 'unknown';
+      const arrests   = gs.arrests    || 0;
+      const crimes    = gs.crimesCommitted || 0;
+      const arrestTxt = arrests === 0 ? 'never' : `${arrests} time${arrests > 1 ? 's' : ''}`;
+      const crimeTxt  = crimes  === 0 ? 'Committed no crime so far.' : `Committed ${crimes} crime${crimes > 1 ? 's' : ''} so far.`;
+      showModal('Personal Information', `
+        <p><strong>${gs.playerName}</strong>, ${prof}.</p>
+        <p>This is your main character.</p>
+        <p>Profession: ${prof}<br>Arrested: ${arrestTxt}</p>
+        <p>${crimeTxt}</p>
+        <p>Day: ${gs.day}<br>Cash: $${(gs.cash||0).toLocaleString()}<br>Debt: $${(gs.debt||0).toLocaleString()}</p>`);
+    }
+    return;
+  }
+});
+
+// ── MULTIPLAYER WEBSOCKET ─────────────────────────────────────────────────────
+// Connects only when IS_MP is true. Handles server-pushed events:
+//   day_advanced  — server timer fired; update state + HUD + pools
+//   pool_update   — another player stole a vehicle; refresh pools
+//   state_update  — server confirms a state change (buy/sell etc.)
+//   steal_ack     — our steal_claim was accepted; navigate to crime.html
+//   steal_nack    — our steal_claim was rejected (car already gone)
+//   game_over     — host ended the game; show final scores
+
+function mpHandleMsg(msg) {
+  switch (msg.type) {
+
+    case 'day_advanced':
+      gs = msg.state;
+      saveState(gs);
+      renderHUD();
+      // Refresh pools in case of daily turnover
+      if (msg.state.locationPools) {
+        gs.locationPools = msg.state.locationPools;
+      }
+      logMsg(`Day ${msg.day} — ${msg.msg}`);
+      break;
+
+    case 'pool_update':
+      // Another player claimed or server refreshed pools
+      gs.locationPools = msg.locationPools;
+      saveState(gs);
+      // If the player currently has a location selected, refresh the thumbnail slots
+      if (currentPool && currentLocation) {
+        const freshPool = gs.locationPools[currentLocation.id] || [];
+        currentPool = freshPool;
+        const thumbImgs = freshPool.map(v => ({ img: v.img, frameX: v.frameX || 0 }));
+        renderRightContext({ label: currentLocation.label, thumbImgs });
+        freshPool.forEach((v, i) => {
+          const slot = document.getElementById(`rightCtxSlot${i}`);
+          if (slot) { slot.dataset.poolIdx = String(i); slot.style.cursor = 'pointer'; }
+        });
+        // Clear slots beyond the new pool size
+        for (let i = freshPool.length; i < 6; i++) {
+          const slot = document.getElementById(`rightCtxSlot${i}`);
+          if (slot) { slot.innerHTML = ''; delete slot.dataset.poolIdx; }
+        }
+        // If selected vehicle was taken, clear selection
+        if (selectedVehicle && !freshPool.find(v => v.uid === selectedVehicle.uid)) {
+          selectedVehicle = null;
+          renderLeftPanel({ type: 'location', data: currentLocation });
+        }
+      }
+      break;
+
+    case 'state_update':
+      gs = msg.state;
+      saveState(gs);
+      renderHUD();
+      break;
+
+    case 'steal_ack':
+      // Server confirmed our claim — proceed to crime screen
+      window.location.href = 'crime.html';
+      break;
+
+    case 'steal_nack':
+      // Someone else got there first
+      selectedVehicle = null;
+      // Re-enable any disabled steal button
+      const stealBtn = document.querySelector('.ctx-action-btn');
+      if (stealBtn) { stealBtn.disabled = false; stealBtn.textContent = currentLocation?.type === 'highway' ? 'Hijack' : 'Steal'; }
+      break;
+
+    case 'player_disconnected':
+      logMsg(`A player disconnected.`);
+      break;
+
+    case 'game_over': {
+      const rows = msg.scores.map((s, i) =>
+        `${i+1}. ${s.name} — $${s.score.toLocaleString()}`
+      ).join('\n');
+      logMsg('── GAME OVER ──');
+      msg.scores.forEach((s, i) => logMsg(`${i+1}. ${s.name}  Cash: $${s.cash.toLocaleString()}  Debt: $${s.debt.toLocaleString()}  Net: $${s.score.toLocaleString()}`));
+      break;
+    }
+
+    case 'race_challenge': {
+      const accept = confirm(`${msg.fromName} challenges you to a race with ${msg.vehicle?.name || 'their car'}!\n\nAccept?`);
+      mpWs.send(JSON.stringify({ type:'race_respond', accept }));
+      break;
+    }
+
+    case 'race_started':
+      // Both players navigated to race screen; server already updated gs.currentRace
+      gs.currentRace = msg.race;
+      saveState(gs);
+      window.location.href = 'race.html';
+      break;
+
+    case 'error':
+      logMsg('Server: ' + msg.msg);
+      break;
+  }
+}
+
+function logMsg(text) {
+  const el = document.getElementById('msgText');
+  el.innerHTML += `<p>${text}</p>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+if (IS_MP) {
+  const wsUrl = location.hostname === 'localhost' ? 'ws://localhost:8080' : `wss://${location.hostname}`;
+  mpWs = new WebSocket(wsUrl);
+
+  mpWs.onopen = () => {
+    const token = sessionStorage.getItem('fbToken');
+    if (!token) { window.location.href = 'auth.html'; return; }
+    // Authenticate first, then reconnect to restore server-side session
+    mpWs.send(JSON.stringify({ type:'auth', token }));
+  };
+
+  mpWs.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'auth_ok') {
+      mpWs.send(JSON.stringify({ type:'reconnect', code: MP_CODE, playerId: MP_ID }));
+      return;
+    }
+    try { mpHandleMsg(msg); } catch(err) { console.error('MP msg error:', err); }
+  };
+
+  mpWs.onclose = () => logMsg('Disconnected from server.');
+  mpWs.onerror = () => logMsg('WebSocket error — server may be down.');
+}
+</script>
+</body>
+</html>
+
+

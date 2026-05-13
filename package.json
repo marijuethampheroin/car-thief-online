@@ -1,0 +1,14 @@
+{
+  "name": "car-thief-online",
+  "version": "0.1.0",
+  "description": "Browser-based multiplayer adaptation of Car Thief 6",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.8.0",
+    "ws": "^8.18.0"
+  }
+}
