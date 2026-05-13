@@ -1,0 +1,173 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Car Thief Online</title>
+<link rel="stylesheet" href="styles.css">
+<script src="game.js"></script>
+<style>
+body { background: #2e1800; }
+.dialog {
+  width: 460px;
+  background-image: url('Graphics/UI_elements/background.bmp');
+  background-size: cover;
+}
+.body { padding: 14px 16px; display: grid; grid-template-columns: 155px 1fr; gap: 16px; }
+/* left column */
+.lft { display: flex; flex-direction: column; gap: 8px; }
+.portrait { width: 140px; height: 178px; }
+.pic-nav { display: flex; gap: 3px; }
+.pic-nav .btn { flex: 1; padding: 3px 0; font-size: 11px; }
+.pic-lbl { font-size: 10px; color: var(--text-light); text-align: center; }
+/* right column */
+.rgt { display: flex; flex-direction: column; gap: 10px; }
+.grp { display: flex; flex-direction: column; gap: 3px; }
+.grp-lbl { font-family:'Oswald',sans-serif; font-size:11px; color:var(--text-light);
+           display:flex; align-items:center; gap:4px; margin-bottom:1px; }
+.opt { width:100%; text-align:center; padding:4px; font-size:12px; }
+/* footer */
+.footer { display:flex; justify-content:center; gap:20px; padding:10px;
+          border-top:1px solid var(--border-dark); background:rgba(0,0,0,0.15); }
+.field-lbl { font-family:'Oswald',sans-serif; font-size:11px; color:var(--text-light); margin-bottom:3px; }
+/* city picker */
+.city-map-wrap { position:relative; width:100%; aspect-ratio:3/2; background:var(--bg-dark);
+                 border:1px solid var(--border-dark); overflow:hidden; }
+.city-map-wrap img { width:100%; height:100%; object-fit:contain; display:block; opacity:0.85; }
+.city-dot { position:absolute; transform:translate(-50%,-50%); cursor:pointer; }
+.city-dot .cdot { width:10px; height:10px; border-radius:50%;
+                  background:rgba(180,120,40,0.85); border:2px solid #ffd080;
+                  transition:background 0.15s, transform 0.15s; }
+.city-dot:hover .cdot { background:#ffd080; transform:scale(1.3); }
+.city-dot.on .cdot { background:#80e080; border-color:#c0ffc0;
+                     box-shadow:0 0 7px rgba(0,255,100,0.6); }
+.city-dot-lbl { position:absolute; left:50%; top:12px; transform:translateX(-50%);
+                white-space:nowrap; font-size:8px; color:#ffd080;
+                text-shadow:0 1px 3px #000; pointer-events:none; font-family:'Oswald',sans-serif; }
+.city-dot.on .city-dot-lbl { color:#c0ffc0; }
+.city-sel-lbl { font-size:10px; color:var(--text-dim); text-align:center; margin-top:2px; }
+</style>
+<link rel="manifest" href="/manifest.json">
+<script>if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');</script></head>
+<body>
+<div class="window dialog">
+  <div class="window-titlebar">
+    Start New Game
+    <div class="win-btns"><button class="win-btn">✕</button></div>
+  </div>
+
+  <div class="body">
+    <!-- LEFT -->
+    <div class="lft">
+      <div>
+        <div class="field-lbl">Your Name:</div>
+        <input class="text-input" id="pName" value="Player" style="width:140px">
+      </div>
+      <div class="portrait" id="portraitBox">
+        <img id="portraitImg" src="" alt="" style="width:100%;height:100%;object-fit:cover;image-rendering:pixelated"
+             onerror="this.style.opacity='0.2'">
+      </div>
+      <div class="pic-lbl" id="picLbl">Picture: 1 (out of 28)</div>
+      <div class="pic-nav">
+        <button class="btn" onclick="navPic(-29)">«</button>
+        <button class="btn" onclick="navPic(-1)">‹</button>
+        <button class="btn" onclick="navPic(1)">›</button>
+        <button class="btn" onclick="navPic(29)">»</button>
+      </div>
+      <button class="btn" style="width:60px;font-size:11px">Edit</button>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="rgt">
+      <div class="grp">
+        <div class="grp-lbl">Profession: <button class="help">?</button></div>
+        <button class="btn opt on" data-g="prof" data-v="actor"       onclick="pick(this)">Actor</button>
+        <button class="btn opt"    data-g="prof" data-v="shooter"     onclick="pick(this)">Shooter</button>
+        <button class="btn opt"    data-g="prof" data-v="thief"       onclick="pick(this)">Thief</button>
+        <button class="btn opt"    data-g="prof" data-v="driver"      onclick="pick(this)">Driver</button>
+        <button class="btn opt"    data-g="prof" data-v="locksmith"   onclick="pick(this)">Locksmith</button>
+        <button class="btn opt"    data-g="prof" data-v="electrician" onclick="pick(this)">Electrician</button>
+      </div>
+
+      <!-- STARTING CITY -->
+      <div class="grp">
+        <div class="grp-lbl">Starting City:</div>
+        <div class="city-map-wrap" id="cityMapWrap">
+          <img src="Graphics/UI_elements/map_usa.bmp" onerror="this.style.opacity='0.1'" alt="USA">
+          <!-- dots injected by JS -->
+        </div>
+        <div class="city-sel-lbl" id="citySelLbl">Las Vegas, NV</div>
+      </div>
+
+    </div>
+  </div><!-- /body -->
+
+  <div class="footer">
+    <button class="btn btn-go" onclick="startGame()">Go!</button>
+    <button class="btn" onclick="location.href='lobby.html'">Cancel</button>
+  </div>
+</div><!-- /window -->
+
+<script>
+let picIdx = 1;
+const PIC_TOTAL = 6;
+
+// 6 high-quality player portraits (contacts use the separate person01–28 pool)
+const picPaths = [
+  'Graphics/portraits/portrait_1.png',
+  'Graphics/portraits/portrait_2.png',
+  'Graphics/portraits/portrait_3.png',
+  'Graphics/portraits/portrait_4.png',
+  'Graphics/portraits/portrait_5.png',
+  'Graphics/portraits/portrait_6.png',
+];
+
+function updatePortrait() {
+  document.getElementById('picLbl').textContent =
+    `Picture: ${picIdx} (out of ${PIC_TOTAL})`;
+  document.getElementById('portraitImg').src = picPaths[picIdx - 1];
+}
+
+function navPic(d) {
+  picIdx = ((picIdx - 1 + d % PIC_TOTAL + PIC_TOTAL) % PIC_TOTAL) + 1;
+  updatePortrait();
+}
+
+function pick(btn) {
+  const g = btn.dataset.g;
+  document.querySelectorAll(`[data-g="${g}"]`).forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+}
+
+function startGame() {
+  const profession  = document.querySelector('[data-g="prof"].on')?.dataset.v || 'actor';
+  const startCityId = document.querySelector('.city-dot.on')?.dataset.cityId || 'las_vegas';
+  sessionStorage.setItem('playerName',  document.getElementById('pName').value.trim() || 'Player');
+  sessionStorage.setItem('portrait',    picIdx);
+  sessionStorage.setItem('portraitSrc', picPaths[picIdx - 1]);
+  sessionStorage.setItem('profession',  profession);
+  initState(profession, startCityId); // game.js — builds and saves full gameState
+  window.location.href = 'main.html';
+}
+
+// City picker dots
+const cityMapWrap = document.getElementById('cityMapWrap');
+CITIES.forEach((city, i) => {
+  const dot = document.createElement('div');
+  dot.className = 'city-dot' + (i === 0 ? ' on' : '');
+  dot.style.left = city.dotX + '%';
+  dot.style.top  = city.dotY + '%';
+  dot.dataset.cityId = city.id;
+  dot.innerHTML = `<div class="cdot"></div><div class="city-dot-lbl">${city.name.split(',')[0]}</div>`;
+  dot.addEventListener('click', () => {
+    cityMapWrap.querySelectorAll('.city-dot').forEach(d => d.classList.remove('on'));
+    dot.classList.add('on');
+    document.getElementById('citySelLbl').textContent = city.name;
+  });
+  cityMapWrap.appendChild(dot);
+});
+
+updatePortrait();
+</script>
+</body>
+</html>
+

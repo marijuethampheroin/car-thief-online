@@ -159,7 +159,7 @@ function initMenu() {
     item.onclick = () => window.location.href = 'lobby.html';
   } else {
     item.textContent = 'New Game';
-    item.onclick = () => window.location.href = 'start.html';
+    item.onclick = () => window.location.href = 'index.html';
   }
   // Item drag mode toggle — wired after gs loads via initMenuDragToggle()
   const dragItem = document.getElementById('menuItemDragMode');
@@ -2033,7 +2033,7 @@ function logMsg(text) {
 }
 
 if (IS_MP) {
-  const wsUrl = location.hostname === 'localhost' ? 'ws://localhost:8080' : `wss://${location.hostname}`;
+  const wsUrl = location.hostname === 'localhost' ? 'ws://localhost:8080' : 'wss://car-thief-online-production.up.railway.app';
   mpWs = new WebSocket(wsUrl);
 
   mpWs.onopen = () => {
