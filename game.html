@@ -1134,7 +1134,7 @@ function renderStoreDetail() {
   const item = ITEMS_DATA.find(i => i.index === storeSelectedIndex);
   if (!item) return;
 
-  const imgSrc     = `Graphics/items_full/TOOL${String(item.index).padStart(2,'0')}.bmp`;
+  const imgSrc     = `Graphics/items_full/TOOL${String(item.index).padStart(2,'0')}.png`;
   const slotLabel  = item.slot.replace(/_/g,' ');
   const cantAfford = gs.cash < item.buy;
   const bagFull    = gs.inventory.length >= 12;

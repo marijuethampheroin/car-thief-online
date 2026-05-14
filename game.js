@@ -1465,7 +1465,7 @@ function removeItemFromInventory(state, slotIndex) {
  *   lock_pick, wiring, cutting, weapon, armor
  */
 function _generateShopStock() {
-  const all = ITEMS_DATA;
+  const all = ITEMS_DATA.filter(i => i.cat !== 'drug');
 
   // Build weighted ticket pool
   const tickets = [];

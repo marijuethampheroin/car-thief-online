@@ -2,6 +2,14 @@
 
 ---
 
+## Session 27 — 2026-05-14 — Equipment Shop Fixes
+
+### Bug Fixes
+- `game.html` `renderStoreDetail()`: fixed large item image path extension `.bmp` → `.png` (files in `Graphics/items_full/` are PNGs)
+- `game.js` `_generateShopStock()`: excluded `cat === 'drug'` items from equipment shop stock; drugs are only available from the drug dealer NPC
+
+---
+
 ## Session 26 — 2026-05-13 — Deployment + File Renames
 
 ### Deployment
