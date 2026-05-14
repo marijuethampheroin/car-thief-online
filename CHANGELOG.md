@@ -726,3 +726,34 @@ Character panel (both screens) now fits within panel height with no scrolling. P
 ### Added/Changed — `logic.js`
 - Added `getToolBonus()` and `getBestActor()` (identical logic to `game.js`, no DOM references)
 - Replaced `resolveAction()` entirely — now crew-aware, in sync with `game.js`; added missing cases: `slim_jim`, `check_gps`, `skip_gps`, `get_in_vehicle`, `shoot_driver`, `skip_turn`; gun gate on `show_your_gun` and `shoot_driver`
+
+---
+
+## Session 26 — 2026-05-13
+
+### Added — `game.js` — bank robbery action cases
+New cases added to `resolveAction()`:
+- `bank_give_note` — Acting check; success: teller_complied + low rise; fail: alarm_triggered + larger rise
+- `bank_announce` — Shooting check (gun required); success: teller_complied + medium rise; fail: alarm_triggered + large rise
+- `bank_demand_teller` — No check; pays $1500–$8000; sets teller_cash_taken
+- `bank_find_manager` — No check; sets manager_found; medium rise
+- `bank_lead_to_vault` — Acting check (gun required); success: manager_complied; fail: rise spike
+- `bank_demand_vault` — Rolls both shooting + acting (gun required); pass if either passes; success: vault_open
+- `bank_fill_bag` — No check; pays $500–$2000 per bag; decrements bags_remaining; rise per bag
+- `bank_leave` — Returns `progress:'bank_leave'`; triggers drive-away exit
+
+### Added — `crime.html`
+- Bank sceneState fields added to initial `sceneState` object: `teller_approached`, `teller_complied`, `alarm_triggered`, `teller_cash_taken`, `manager_found`, `manager_complied`, `vault_open`, `bags_remaining` (2–4 random), `bags_taken`
+- `locType === 'bank'` branch added to `getValidActions()` — full action ladder with gun gates and state progression
+- Bank action defs added to `actDefs`: all 8 bank actions with appropriate button image indices
+- `bank` added to `sceneImgs` map → `Graphics/UI_elements/group_office.bmp`
+- `progress:'bank_leave'` handled in `_applyTurnResult` → calls `startBankExit()`
+- `startBankExit()` added — reuses `resolveDriveAway()` at speed 70; success → `endScene('bank_success')`
+- `endScene('bank_success')` added — saves state, logs exit message, redirects to `game.html`
+- Vehicle slot click guarded: `if(vehData)` check prevents null error when no vehicle (bank scene)
+
+### Changed — `game.html` + `main.html`
+- `goBankRob()` wired in both files: writes `{type:'bank', label:'Bank'}` to sessionStorage and navigates to `crime.html` (was "coming soon" stub)
+
+### Added — `Graphics/UI_elements/`
+- `group_office.bmp`, `group_house.bmp`, `group_road.bmp`, `group_ground.bmp` — copied from `backup/graphics/UI_elements/` (were missing from working directory)

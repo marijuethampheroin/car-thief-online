@@ -139,7 +139,7 @@ The game ends when a player flies to the airport. Highest score (cash minus debt
 | Racing | ✅ | |
 | Party / contacts system | ✅ | Full stats + backpack shown in left panel when portrait clicked |
 | Hideout / garage management | ✅ | |
-| Bank | ⚠️ | Account tab done; Loan + Rob tabs stub |
+| Bank | ⚠️ | Account tab ✅; Loan tab stub; Rob tab ✅ (full heist sequence in crime.html) |
 | Pawn shop | ❌ | Not started |
 | City travel | ✅ | |
 | Win condition | ⚠️ | Travel ✅; end game trigger TBD |
@@ -204,7 +204,9 @@ The game ends when a player flies to the airport. Highest score (cash minus debt
 - race.html and arrested.html MP WebSocket wiring
 - store buy_item and sell_vehicle server messages
 - steal_claim conflict resolution end-to-end testing
-- Bank loan + rob tabs; pawn shop not started
+- Bank MP wiring — `bank_leave`/`bank_success` not yet handled in server or `mpHandleMsg`
+- Bank loan tab (stub)
+- Pawn shop not started
 - Win condition (end game trigger) — design TBD
 - GPS tracker foil sequence in crime.html
 - Phase 2 — Drug Dealing (backend done; UI partial)

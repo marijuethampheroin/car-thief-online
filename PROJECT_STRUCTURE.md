@@ -27,9 +27,6 @@ _Last updated: 2026-05-10 (session 24)_
 | `items.json` | 54 item definitions (indices 1–44 tools/weapons/armor, 45–54 drug packages) |
 | `vehicles.json` | 125 vehicle definitions (name, body, stats, imgIdx) |
 | `package.json` | Node dependencies (ws, firebase-admin) |
-| `zip_cto.py` | Build zipper — packages all game files listed here into a dated .zip |
-| `slice_mapicons.py` | Slices `mapgroups01/02.bmp` into individual PNGs → `Graphics/map_icons/` |
-| `slice_portraits.py` | Slices portrait sheets into individual PNGs → `Graphics/portraits/portrait_7–18.png` |
 | `sw.js` | Service worker (PWA offline support) |
 | `manifest.json` | PWA manifest |
 
@@ -57,7 +54,7 @@ _Last updated: 2026-05-10 (session 24)_
 | Path | Used by |
 |---|---|
 | `Graphics/portraits/portrait_1–18.png` | start.html, index.html, lobby.html (player portrait picker); portraits 7–18 sliced from sheets by `slice_portraits.py` |
-| `Graphics/character_portraits_full/person01–28.bmp` | game.js (`generateContact`), contacts modal |
+| `Graphics/character_portraits_full/person01–28.png` | game.js (`generateContact`), contacts modal; converted from BMP by `convert_portraits.py` |
 
 ### Vehicles
 | Path | Used by |
