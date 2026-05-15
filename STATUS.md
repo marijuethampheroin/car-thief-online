@@ -1,6 +1,6 @@
 # Car Thief Online — Development Status
 
-_Last updated: 2026-05-13 (session 26)_
+_Last updated: 2026-05-14 (session 28)_
 
 ---
 
@@ -155,7 +155,7 @@ The game ends when a player flies to the airport. Highest score (cash minus debt
 | index.html (room browser/create) | ✅ | |
 | Auth flow | ✅ | |
 | Room create/join/start | ✅ | Two players tested successfully |
-| Shared city map / location pools | ❌ | Each player currently sees independent pools; needs server-authoritative shared state |
+| Shared city map / location pools | ✅ | Server owns pools; `game.html` reads from `sessionStorage` on load; `reconnected` handler re-applies server pools on page refresh |
 | Shared day timer | ⚠️ | Timer exists in server.js but day advancement not pushing to clients reliably |
 | crime.html wiring | ✅ | do_action, arrest, steal_success wired |
 | steal_claim conflict resolution | ⚠️ | pendingClaims exists in server but not fully tested |

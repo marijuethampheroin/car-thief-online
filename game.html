@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -1661,6 +1661,11 @@ function renderMapIcons() {
   // Also update skip-day to pass current stealable locs
   window._stealableLocDefs = stealableLocDefs;
 }
+// Multiplayer: use server-assigned location pools (saved by index.html on game_started)
+if (IS_MP) {
+  const _mpPools = sessionStorage.getItem('locationPools');
+  if (_mpPools) { try { gs.locationPools = JSON.parse(_mpPools); } catch(e){} }
+}
 renderMapIcons();
 
 // ── LEFT PANEL — Reset to character view on empty click ───────────────────────
@@ -1939,10 +1944,7 @@ function mpHandleMsg(msg) {
       gs = msg.state;
       saveState(gs);
       renderHUD();
-      // Refresh pools in case of daily turnover
-      if (msg.state.locationPools) {
-        gs.locationPools = msg.state.locationPools;
-      }
+      renderMapIcons();
       logMsg(`Day ${msg.day} — ${msg.msg}`);
       break;
 
@@ -1982,6 +1984,15 @@ function mpHandleMsg(msg) {
     case 'steal_ack':
       // Server confirmed our claim — proceed to crime screen
       window.location.href = 'crime.html';
+      break;
+
+    case 'reconnected':
+      gs = msg.state;
+      if (msg.locationPools) gs.locationPools = msg.locationPools;
+      saveState(gs);
+      renderHUD();
+      renderMapIcons();
+      logMsg('Reconnected to game.');
       break;
 
     case 'steal_nack':

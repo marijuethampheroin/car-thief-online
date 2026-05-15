@@ -2,6 +2,13 @@
 
 ---
 
+## Session 28 — 2026-05-14 — Shared City Map / Location Pools
+
+### Fixed — `game.html`
+- On load: server-assigned `locationPools` (saved to `sessionStorage` by `index.html` on `game_started`) are now injected into `gs.locationPools` before `renderMapIcons()` is called, replacing the previous behaviour where each client generated independent pools
+- Added `case 'reconnected'` to `mpHandleMsg`: restores `gs` from server state and applies `msg.locationPools`; calls `renderHUD()` and `renderMapIcons()` so a page-refresh re-syncs correctly
+- `day_advanced` handler: removed dead `if (msg.state.locationPools)` block (server state never carries `locationPools`); added `renderMapIcons()` call so the map refreshes after a day tick
+
 ## Session 27 — 2026-05-14 — Equipment Shop Fixes
 
 ### Bug Fixes
