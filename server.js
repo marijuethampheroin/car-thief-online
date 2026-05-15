@@ -468,6 +468,26 @@ function handleMessage(ws, playerId, roomCode, data) {
       break;
     }
 
+    // ── get_players ────────────────────────────────────────────────────────
+    // Client requests the current room's player roster.
+    case 'get_players': {
+      if (!room) return;
+      send(ws, { type: 'players_list', players: playerList(room) });
+      break;
+    }
+
+    // ── chat_message ───────────────────────────────────────────────────────
+    // Client sends a chat message; server broadcasts it to all room players.
+    case 'chat_message': {
+      if (!room) return;
+      const sender = room.players.get(playerId);
+      if (!sender) return;
+      const text = String(data.text || '').trim().slice(0, 120);
+      if (!text) return;
+      broadcast(room, { type: 'chat_message', fromId: playerId, fromName: sender.name, text });
+      break;
+    }
+
     // ── end_game ───────────────────────────────────────────────────────────
     // Player flies to airport and triggers end. Server broadcasts final scores.
     case 'end_game': {

@@ -6,7 +6,41 @@
 <link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="styles_v2.css">
 <script src="game.js"></script>
 <link rel="manifest" href="manifest.json">
-<script>if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');</script></head>
+<script>if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');</script>
+<style>
+/* ── Chat / Players modal ───────────────────────────────────────────────── */
+.chat-modal { width: 460px; }
+.chat-players-bar {
+  display: flex; gap: 5px; padding: 6px 10px; flex-wrap: wrap;
+  border-bottom: 1px solid var(--border-dark); background: rgba(0,0,0,0.15);
+  min-height: 46px; align-items: center;
+}
+.chat-player {
+  display: flex; align-items: center; gap: 4px;
+  background: rgba(0,0,0,0.25); border: 1px solid var(--border-dark);
+  padding: 2px 6px 2px 2px; font-size: 11px; color: var(--text-light);
+}
+.chat-player img { width: 22px; height: 28px; object-fit: cover; object-position: top; image-rendering: pixelated; }
+.chat-player .cp-dot { width: 6px; height: 6px; border-radius: 50%; background: #4caf50; flex-shrink: 0; }
+.chat-player .cp-dot.away { background: #666; }
+.chat-log {
+  padding: 8px 10px; min-height: 200px; max-height: 280px;
+  overflow-y: auto; display: flex; flex-direction: column; gap: 4px;
+  background: rgba(0,0,0,0.1);
+}
+.chat-entry { font-size: 11px; line-height: 1.5; word-break: break-word; }
+.chat-entry .ce-name { font-family: 'Oswald', sans-serif; font-size: 12px; color: var(--border-light); }
+.chat-entry .ce-self { color: #ffd080; }
+.chat-entry .ce-text { color: var(--text-main); }
+.chat-entry.ce-system { color: var(--text-dim); font-style: italic; }
+.chat-input-row {
+  display: flex; gap: 6px; padding: 7px 10px;
+  border-top: 1px solid var(--border-dark); background: rgba(0,0,0,0.15);
+}
+.chat-input-row .text-input { flex: 1; font-size: 12px; }
+.chat-empty { padding: 20px; text-align: center; font-size: 11px; color: var(--text-dim); }
+</style>
+</head>
 <body class="main-screen">
 <div class="window game-window">
   <div class="window-titlebar" style="display:none">
@@ -25,7 +59,7 @@
       <span class="hud-sep">|</span>
       <span>Debt: <span class="hud-val debt-val" id="debt">$746,800</span></span>
       <div class="hud-spacer"></div>
-      <div class="hud-icon" title="Message Archive">💬</div>
+      <div class="hud-icon" id="chatIcon" title="Players &amp; Chat" onclick="openChatModal()" style="cursor:pointer">💬</div>
       <div class="hud-icon" title="Contacts" onclick="openContactsModal()">👥</div>
       <div class="menu-wrap" id="menuWrap">
         <button class="menu-btn" id="menuBtn" onclick="toggleMenu()">Menu ▾</button>
@@ -119,10 +153,28 @@
   <!-- MESSAGE LOG -->
   <div class="msg-strip">
     <div class="msg-text" id="msgText"><p>Welcome to Car Thief Online.</p><p>Click a location on the map to begin.</p></div>
-    <button class="msg-more" title="Message archive">···</button>
+    <button class="msg-more" title="Open chat" onclick="openChatModal()">···</button>
   </div>
 
 </div><!-- /window -->
+
+<!-- CHAT / PLAYERS MODAL -->
+<div class="ct-modal-overlay" id="chatOverlay" style="display:none" onclick="if(event.target===this)closeChatModal()">
+  <div class="ct-modal chat-modal">
+    <div class="ct-modal-header">
+      <span class="ct-modal-title">Players &amp; Chat</span>
+      <button class="ct-modal-close" onclick="closeChatModal()">✕</button>
+    </div>
+    <div class="chat-players-bar" id="chatPlayerList"></div>
+    <div class="chat-log" id="chatLog">
+      <div class="chat-entry ce-system">Game chat — messages are visible to all players in the room.</div>
+    </div>
+    <div class="chat-input-row">
+      <input class="text-input" id="chatInput" placeholder="Say something..." maxlength="120">
+      <button class="btn" id="chatSendBtn" onclick="sendChatMsg()">Send</button>
+    </div>
+  </div>
+</div>
 
 <!-- CONTACTS MODAL -->
 <div class="ct-modal-overlay" id="contactsOverlay" style="display:none" onclick="if(event.target===this)closeContactsModal()">
@@ -1993,6 +2045,10 @@ function mpHandleMsg(msg) {
       renderHUD();
       renderMapIcons();
       logMsg('Reconnected to game.');
+      // Seed the player list from the server's response
+      if (msg.players && msg.players.length) {
+        _chatRoomPlayers = msg.players.map(p => ({ ...p, connected: p.connected !== false }));
+      }
       break;
 
     case 'steal_nack':
@@ -2005,6 +2061,9 @@ function mpHandleMsg(msg) {
 
     case 'player_disconnected':
       logMsg(`A player disconnected.`);
+      { const dp = _chatRoomPlayers.find(p => p.id === msg.playerId);
+        if (dp) { dp.connected = false; }
+        if (document.getElementById('chatOverlay').style.display !== 'none') renderChatPlayers(); }
       break;
 
     case 'game_over': {
@@ -2032,6 +2091,32 @@ function mpHandleMsg(msg) {
     case 'error':
       logMsg('Server: ' + msg.msg);
       break;
+
+    case 'chat_message': {
+      const isSelf = msg.fromId === MP_ID;
+      appendChatEntry(msg.fromName, msg.text, isSelf, false);
+      // Pulse 💬 icon when chat modal is closed
+      if (document.getElementById('chatOverlay').style.display === 'none') {
+        const icon = document.getElementById('chatIcon');
+        if (icon) {
+          icon.style.color = '#ffd080';
+          icon.title = 'New message — Players & Chat';
+        }
+      }
+      break;
+    }
+
+    case 'players_list': {
+      // Merge server list with local tracking, keeping self's portraitSrc
+      const selfEntry = _chatRoomPlayers.find(p => p.id === MP_ID);
+      _chatRoomPlayers = msg.players.map(p => ({
+        ...p,
+        portraitSrc: (p.id === MP_ID && selfEntry?.portraitSrc) ? selfEntry.portraitSrc : (p.portraitSrc || ''),
+        connected:   p.connected !== false,
+      }));
+      if (document.getElementById('chatOverlay').style.display !== 'none') renderChatPlayers();
+      break;
+    }
   }
 }
 
@@ -2064,6 +2149,105 @@ if (IS_MP) {
   mpWs.onclose = () => logMsg('Disconnected from server.');
   mpWs.onerror = () => logMsg('WebSocket error — server may be down.');
 }
+
+// ── CHAT / PLAYERS MODAL ──────────────────────────────────────────────────────
+let _chatRoomPlayers = []; // [{id, name, portraitSrc, profession, connected}]
+
+function openChatModal() {
+  // Build self-entry from current game state
+  const selfEntry = {
+    id:          MP_ID || 'self',
+    name:        gs.playerName || 'You',
+    portraitSrc: gs.portraitSrc || '',
+    profession:  gs.profession  || '',
+    connected:   true,
+  };
+
+  if (_chatRoomPlayers.length === 0) {
+    _chatRoomPlayers = [selfEntry];
+  } else {
+    // Ensure self is always in the list and up-to-date
+    const selfInList = _chatRoomPlayers.find(p => p.id === selfEntry.id);
+    if (!selfInList) _chatRoomPlayers.unshift(selfEntry);
+  }
+
+  renderChatPlayers();
+
+  // Disable input in singleplayer
+  const inp = document.getElementById('chatInput');
+  const btn = document.getElementById('chatSendBtn');
+  if (!IS_MP) {
+    inp.disabled = true;
+    inp.placeholder = 'Chat requires multiplayer';
+    btn.disabled = true;
+  } else {
+    inp.disabled = false;
+    inp.placeholder = 'Say something...';
+    btn.disabled = false;
+    // Request fresh player list from server
+    if (mpWs && mpWs.readyState === 1) {
+      mpWs.send(JSON.stringify({ type: 'get_players' }));
+    }
+  }
+
+  document.getElementById('chatOverlay').style.display = 'flex';
+  if (IS_MP) inp.focus();
+
+  // Clear the unread pip on the chat icon
+  const icon = document.getElementById('chatIcon');
+  if (icon) { icon.style.color = ''; icon.title = 'Players & Chat'; }
+}
+
+function closeChatModal() {
+  document.getElementById('chatOverlay').style.display = 'none';
+}
+
+function renderChatPlayers() {
+  const el = document.getElementById('chatPlayerList');
+  if (!el) return;
+  if (!_chatRoomPlayers.length) {
+    el.innerHTML = '<span style="font-size:11px;color:var(--text-dim);padding:0 4px">No player data yet.</span>';
+    return;
+  }
+  el.innerHTML = _chatRoomPlayers.map(p => {
+    const isSelf = p.id === (MP_ID || 'self');
+    return `<div class="chat-player" title="${esc(p.profession || '')}">
+      <span class="cp-dot${p.connected === false ? ' away' : ''}"></span>
+      ${p.portraitSrc ? `<img src="${esc(p.portraitSrc)}" onerror="this.style.display='none'">` : ''}
+      <span>${esc(p.name)}${isSelf ? ' <span style="color:#ffd080;font-size:9px">(you)</span>' : ''}</span>
+    </div>`;
+  }).join('');
+}
+
+function appendChatEntry(fromName, text, isSelf, isSystem) {
+  const log = document.getElementById('chatLog');
+  if (!log) return;
+  const div = document.createElement('div');
+  div.className = 'chat-entry' + (isSystem ? ' ce-system' : '');
+  if (isSystem) {
+    div.innerHTML = `<span class="ce-text">${esc(text)}</span>`;
+  } else {
+    div.innerHTML = `<span class="ce-name ${isSelf ? 'ce-self' : ''}">${esc(fromName)}:</span> <span class="ce-text">${esc(text)}</span>`;
+  }
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+function sendChatMsg() {
+  if (!IS_MP) return;
+  const inp  = document.getElementById('chatInput');
+  const text = (inp.value || '').trim();
+  if (!text) return;
+  if (mpWs && mpWs.readyState === 1) {
+    mpWs.send(JSON.stringify({ type: 'chat_message', text }));
+    inp.value = '';
+    inp.focus();
+  }
+}
+
+document.getElementById('chatInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') sendChatMsg();
+});
 </script>
 </body>
 </html>

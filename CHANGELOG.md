@@ -772,3 +772,9 @@ New cases added to `resolveAction()`:
 
 ### Added — `Graphics/UI_elements/`
 - `group_office.bmp`, `group_house.bmp`, `group_road.bmp`, `group_ground.bmp` — copied from `backup/graphics/UI_elements/` (were missing from working directory)
+
+## Session 29 — Landing page + play.html split
+
+### Changes
+- **`index.html`** — Rebuilt as landing page. Shows title, description, live multiplayer stats (rooms/players via WS), Sign In/Out in auth bar, Play Multiplayer button (requires login → `play.html`), Play Solo button (→ `classic.html`, stub), Leaderboard link.
+- **`play.html`** — New file, copied from old `index.html`. Solo tab removed entirely. Login gate added on page load (redirects to `auth.html?then=play.html` if no token). `doSolo()` removed. `auth.html` redirect targets updated from `index.html` → `play.html`.
