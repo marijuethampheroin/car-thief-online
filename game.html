@@ -1658,7 +1658,7 @@ function renderMapIcons() {
   // Remove old icons
   mw.querySelectorAll('.map-icon').forEach(el => el.remove());
 
-  const mapIcons = getCityLocations(gs);
+  const mapIcons = (IS_MP && gs.mpLocDefs) ? gs.mpLocDefs : getCityLocations(gs);
 
   // Stealable location defs for vehicle pool init
   const stealableTypes = ['highway','residential','busy','racing'];
@@ -1666,11 +1666,13 @@ function renderMapIcons() {
     .filter(ic => ic.id && stealableTypes.includes(ic.type))
     .map(ic => ({ id: ic.id, type: ic.type }));
 
-  // Init pools for any new locations that don't have one yet
+  // Init pools for any new locations that don't have one yet (SP only — server owns pools in MP)
   if (!gs.locationPools) gs.locationPools = {};
-  const missingLocs = stealableLocDefs.filter(loc => !gs.locationPools[loc.id]);
-  if (missingLocs.length) {
-    initLocationPools(gs, missingLocs);
+  if (!IS_MP) {
+    const missingLocs = stealableLocDefs.filter(loc => !gs.locationPools[loc.id]);
+    if (missingLocs.length) {
+      initLocationPools(gs, missingLocs);
+    }
   }
 
   mapIcons.forEach(ic => {
@@ -1717,6 +1719,9 @@ function renderMapIcons() {
 if (IS_MP) {
   const _mpPools = sessionStorage.getItem('locationPools');
   if (_mpPools) { try { gs.locationPools = JSON.parse(_mpPools); } catch(e){} }
+
+  const _mpLocs = sessionStorage.getItem('locDefs');
+  if (_mpLocs) { try { gs.mpLocDefs = JSON.parse(_mpLocs); } catch(e){} }
 }
 renderMapIcons();
 
@@ -2041,6 +2046,7 @@ function mpHandleMsg(msg) {
     case 'reconnected':
       gs = msg.state;
       if (msg.locationPools) gs.locationPools = msg.locationPools;
+      if (msg.locDefs) gs.mpLocDefs = msg.locDefs;
       saveState(gs);
       renderHUD();
       renderMapIcons();

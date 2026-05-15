@@ -2,6 +2,28 @@
 
 ---
 
+## Session 29 — 2026-05-15 — Shared Map Locations + Auth Token Refresh
+
+### Fixed — `play.html`
+- Added Firebase app-compat + auth-compat SDK to `<head>` and initialized Firebase
+- `connectWs()`: replaced stale `sessionStorage.getItem('fbToken')` with `firebase.auth().currentUser.getIdToken()` — auto-refreshes expired tokens (Firebase ID tokens expire after 1 hour); falls back to sessionStorage value if `currentUser` is null; updates sessionStorage cache after refresh
+
+### Fixed — `play.html`, `server.js`, `game.html`
+**Problem:** Each client called `_generateCityLocations()` independently, producing different randomized icon positions despite matching location pool IDs.
+
+**Solution:** Host generates locations once on `start_game`; server distributes them to all players; clients use server-provided locations.
+
+- `play.html` `doCreate()`: saves `startCityId` to `sessionStorage` so it's available when the game starts
+- `play.html` `startGame()`: replaced static `LOC_DEFS` constant with a live call to `_generateCityLocations(startCityId)` — host now generates the authoritative location list
+- `play.html` `game_started` handler: saves `msg.locDefs` to `sessionStorage` alongside `locationPools`
+- `server.js` `start_game` handler: includes `locDefs: room.locDefs` in the `game_started` message sent to each player
+- `server.js` `reconnected` send: includes `locDefs: room.locDefs` so rejoining players also receive the correct map
+- `game.html` MP init block: loads `locDefs` from `sessionStorage` into `gs.mpLocDefs`
+- `game.html` `renderMapIcons()`: uses `gs.mpLocDefs` when `IS_MP` instead of calling `getCityLocations(gs)`; skips `initLocationPools` for missing locs in MP (server owns the pools)
+- `game.html` `reconnected` handler: applies `msg.locDefs` to `gs.mpLocDefs` before calling `renderMapIcons()`
+
+---
+
 ## Session 28 — 2026-05-14 — Shared City Map / Location Pools
 
 ### Fixed — `game.html`

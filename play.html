@@ -7,6 +7,18 @@
 <link rel="stylesheet" href="styles_v2.css">
 <link rel="manifest" href="manifest.json">
 <script src="game.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script>
+  firebase.initializeApp({
+    apiKey: "AIzaSyDsh_Wpfeed0gQU6m1aZgHENhMb9tBYi4c",
+    authDomain: "car-thief-online.firebaseapp.com",
+    projectId: "car-thief-online",
+    storageBucket: "car-thief-online.firebasestorage.app",
+    messagingSenderId: "942239496002",
+    appId: "1:942239496002:web:e387b44b309372905dbadb"
+  });
+</script>
 <script>if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');</script>
 <style>
 body { background: #0e0c0a; display:flex; align-items:center; justify-content:center; min-height:100vh; }
@@ -387,6 +399,7 @@ function doCreate() {
   const token = sessionStorage.getItem('fbToken');
   if (!token) { window.location.href = 'auth.html?then=play.html'; return; }
   const ch = getCharacter();
+  sessionStorage.setItem('startCityId', ch.startCityId);
   connectWs(() => send({
     type:     'create_room',
     roomName: document.getElementById('roomName').value.trim() || 'My Game',
@@ -405,9 +418,18 @@ let myCode = null;
 let isHost = false;
 
 function connectWs(onAuth) {
-  const token = sessionStorage.getItem('fbToken');
+  const getToken = () => {
+    const user = firebase.auth().currentUser;
+    if (user) return user.getIdToken();
+    return Promise.resolve(sessionStorage.getItem('fbToken'));
+  };
   ws = new WebSocket(WS_URL);
-  ws.onopen    = () => ws.send(JSON.stringify({ type: 'auth', token }));
+  ws.onopen = () => {
+    getToken().then(token => {
+      sessionStorage.setItem('fbToken', token);
+      ws.send(JSON.stringify({ type: 'auth', token }));
+    });
+  };
   ws.onmessage = (e) => {
     const msg = JSON.parse(e.data);
     if (msg.type === 'auth_ok') { onAuth(); return; }
@@ -462,6 +484,7 @@ function handleMsg(msg) {
       sessionStorage.setItem('isHost',        isHost ? '1' : '0');
       sessionStorage.setItem('gameState',     JSON.stringify(msg.state));
       sessionStorage.setItem('locationPools', JSON.stringify(msg.locationPools));
+      sessionStorage.setItem('locDefs',       JSON.stringify(msg.locDefs));
       sessionStorage.setItem('playerName',    msg.state.playerName);
       sessionStorage.setItem('portraitSrc',   msg.state.portraitSrc);
       sessionStorage.setItem('profession',    msg.state.profession);
@@ -521,7 +544,9 @@ function leaveRoom() {
 }
 
 function startGame() {
-  send({ type: 'start_game', locDefs: LOC_DEFS });
+  const startCityId = sessionStorage.getItem('startCityId') || 'las_vegas';
+  const locDefs = _generateCityLocations(startCityId);
+  send({ type: 'start_game', locDefs });
 }
 
 function setRoomStatus(msg) {
