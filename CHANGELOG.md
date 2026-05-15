@@ -2,6 +2,34 @@
 
 ---
 
+## v0.3.0 — Session 30 — 2026-05-15 — Players & Chat Modal
+
+### Added — `game.html`
+- **Players & Chat modal** — opens via 💬 HUD icon or `···` message strip button
+  - Player roster bar at top: portrait thumbnail, name, online/away dot per player
+  - Scrollable chat log with system entry on open
+  - Input row with Send button and Enter-to-send keyboard shortcut
+  - Singleplayer: input and Send button disabled with explanatory placeholder
+  - Multiplayer: requests fresh player list from server (`get_players`) on every open; input focused automatically
+- **Unread pulse** — 💬 icon turns gold and tooltip updates to "New message" when a chat message arrives while the modal is closed; clears on next open
+- `_chatRoomPlayers` array tracks known room players; seeded from the `reconnected` message on WS connect, refreshed by `players_list` responses, and updated by `player_disconnected` events
+- `esc()` helper added to game.html script (was previously only in `play.html`); its absence was silently preventing `openChatModal()` from completing
+
+### Added — `server.js`
+- `get_players` handler — responds to the requesting client with `playerList(room)` (name, portraitSrc, profession, connected per player)
+- `chat_message` handler — strips/trims input to 120 chars, broadcasts `{ type:'chat_message', fromId, fromName, text }` to all room players (sender included; no optimistic rendering needed)
+
+### Added/Changed — `game.html` `mpHandleMsg`
+- `chat_message` case — appends chat entry to log; pulses 💬 icon if modal is closed
+- `players_list` case — merges server roster into `_chatRoomPlayers`; re-renders player bar if modal is open
+- `player_disconnected` — now also marks player as away in `_chatRoomPlayers` and re-renders bar if modal is open
+- `reconnected` — now seeds `_chatRoomPlayers` from `msg.players`
+
+### Fixed — `game.html`
+- `esc()` was not defined in game.html scope; every call inside the chat functions threw a `ReferenceError`, silently preventing the modal from opening entirely
+
+---
+
 ## Session 29 — 2026-05-15 — Shared Map Locations + Auth Token Refresh
 
 ### Fixed — `play.html`

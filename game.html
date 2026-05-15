@@ -2158,6 +2158,7 @@ if (IS_MP) {
 
 // ── CHAT / PLAYERS MODAL ──────────────────────────────────────────────────────
 let _chatRoomPlayers = []; // [{id, name, portraitSrc, profession, connected}]
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 function openChatModal() {
   // Build self-entry from current game state

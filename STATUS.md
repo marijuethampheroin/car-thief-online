@@ -1,6 +1,6 @@
 # Car Thief Online — Development Status
 
-_Last updated: 2026-05-15 (session 29)_
+_Last updated: 2026-05-15 (v0.3.0 / session 30)_
 
 ---
 
@@ -87,6 +87,7 @@ The game ends when a player flies to the airport. Highest score (cash minus debt
 | Garage grid | ✅ | |
 | Hideout panel | ✅ | |
 | Skip day / fly buttons | ✅ | |
+| Players & Chat modal | ✅ | 💬 HUD icon + `···` strip button open modal; player roster with online dots; chat log; Enter-to-send; unread pulse on icon; SP disables input; MP requests `get_players` on open; server broadcasts `chat_message` to room |
 | MP WebSocket wiring | ✅ | steal_claim/ack/nack, day_advanced, pool_update, state_update, game_over, race_challenge |
 
 ### crime.html — Crime Scene
@@ -153,10 +154,11 @@ The game ends when a player flies to the airport. Highest score (cash minus debt
 | server.js + logic.js | ✅ | |
 | Deployment (GitHub Pages + Railway) | ✅ | Live and reachable |
 | index.html (room browser/create) | ✅ | |
-| Auth flow | ✅ | |
+| Auth flow | ✅ | Token auto-refreshed via `currentUser.getIdToken()` in `play.html` — stale sessionStorage token no longer causes "Invalid auth token" on join |
 | Room create/join/start | ✅ | Two players tested successfully |
 | Shared city map / location pools | ✅ | Host generates locations via `_generateCityLocations(startCityId)`; server distributes via `game_started` and `reconnected`; all clients render identical maps |
 | Shared day timer | ⚠️ | Timer exists in server.js but day advancement not pushing to clients reliably |
+| Chat + player roster | ✅ | `chat_message` broadcast; `get_players` → `players_list` response; player online/away state tracked |
 | crime.html wiring | ✅ | do_action, arrest, steal_success wired |
 | steal_claim conflict resolution | ⚠️ | pendingClaims exists in server but not fully tested |
 | race.html wiring | ❌ | race_challenge / race_turn not yet wired |
