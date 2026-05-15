@@ -190,12 +190,12 @@ body::after, body::before { display: none !important; content: none !important; 
       <div class="players-hd">Players</div>
       <div class="player-list" id="playerList"></div>
     </div>
-    <div class="room-status" id="roomStatus"></div>
   </div>
 
   <!-- ── FOOTERS ── -->
   <div class="start-footer" id="startFooter">
     <span id="footerBrowse"></span>
+    <span id="roomStatus" style="font-size:11px;color:var(--text-dim);flex:1;text-align:center"></span>
     <button class="btn btn-go" id="footerCreateBtn" style="display:none" onclick="doCreate()">Create Room</button>
   </div>
   <div class="room-footer" id="roomPanelFooter" style="display:none">
@@ -373,7 +373,7 @@ function joinByCode() {
 function joinRoom(code) {
   const token = sessionStorage.getItem('fbToken');
   if (!token) {
-    window.location.href = `auth.html?then=index.html&join=${code}`;
+    window.location.href = `auth.html?then=play.html&join=${code}`;
     return;
   }
   stopBrowsing();
