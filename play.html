@@ -233,10 +233,8 @@ const PIC_TOTAL = picPaths.length;
 let picIdx = 1;
 
 function updatePortrait() {
-  document.getElementById('picLbl').textContent     = `Picture: ${picIdx} (out of ${PIC_TOTAL})`;
-  document.getElementById('picLblSolo').textContent = `Picture: ${picIdx} (out of ${PIC_TOTAL})`;
-  document.getElementById('portraitImg').src     = picPaths[picIdx - 1];
-  document.getElementById('portraitImgSolo').src = picPaths[picIdx - 1];
+  document.getElementById('picLbl').textContent = `Picture: ${picIdx} (out of ${PIC_TOTAL})`;
+  document.getElementById('portraitImg').src    = picPaths[picIdx - 1];
 }
 
 function navPic(d) {
@@ -256,8 +254,7 @@ function esc(s) {
 // Pre-fill name from auth
 const _storedName = sessionStorage.getItem('playerName');
 if (_storedName) {
-  document.getElementById('pName').value     = _storedName;
-  document.getElementById('pNameSolo').value = _storedName;
+  document.getElementById('pName').value = _storedName;
 }
 
 // ---------------------------------------------------------------------------
@@ -425,13 +422,11 @@ function send(msg) {
 }
 
 function getCharacter() {
-  const activeTab = document.querySelector('.start-tab.on')?.id;
-  const isSolo    = activeTab === 'tabSolo';
   return {
-    name:        (document.getElementById(isSolo ? 'pNameSolo' : 'pName')?.value || 'Player').trim(),
+    name:        (document.getElementById('pName')?.value || 'Player').trim(),
     portraitSrc: picPaths[picIdx - 1],
-    profession:  document.querySelector(isSolo ? '[data-g="profSolo"].on' : '[data-g="prof"].on')?.dataset.v || 'actor',
-    startCityId: document.querySelector((isSolo ? '#cityMapWrapSolo' : '#cityMapWrapCreate') + ' .city-dot.on')?.dataset.cityId || 'las_vegas',
+    profession:  document.querySelector('[data-g="prof"].on')?.dataset.v || 'actor',
+    startCityId: document.querySelector('#cityMapWrapCreate .city-dot.on')?.dataset.cityId || 'las_vegas',
   };
 }
 
