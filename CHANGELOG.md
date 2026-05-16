@@ -2,6 +2,18 @@
 
 ---
 
+## Session 34 — 2026-05-16 — Re-join button; player count fix; portrait fix
+
+### Changed — `server.js`
+- `player_joined` broadcast now includes `portraitSrc` and `profession` so lobby portraits render for newly joined players
+- `pushRoomList()` and `get_room_list` handler now compute `totalPlayers` across all rooms (started + lobby); sent as `msg.totalPlayers`
+
+### Changed — `index.html`
+- `fetchStats()` uses `msg.totalPlayers` for the Players Online stat (falls back to sum of lobby counts for old servers)
+- Added Re-join button (`#rejoinBtn`, `.land-btn-rejoin`) — green, links to `game.html`; shown only when signed in AND `localStorage` has `roomCode`+`playerId`; hidden otherwise
+
+---
+
 ## Session 33 — 2026-05-15 — race.html MP wiring
 
 ### Changed — `race.html`

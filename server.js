@@ -125,7 +125,9 @@ function pushRoomList() {
       hostName:    [...r.players.values()][0]?.name || '?',
       playerCount: r.players.size,
     }));
-  const payload = JSON.stringify({ type: 'room_list', rooms: list });
+  const totalPlayers = [...rooms.values()]
+    .reduce((sum, r) => sum + [...r.players.values()].filter(p => p.connected).length, 0);
+  const payload = JSON.stringify({ type: 'room_list', rooms: list, totalPlayers });
   for (const ws of browsers) {
     if (ws.readyState === 1) ws.send(payload);
   }
@@ -561,7 +563,10 @@ wss.on('connection', (ws, req) => {
           hostName:    [...r.players.values()][0]?.name || '?',
           playerCount: r.players.size,
         }));
-      send(ws, { type: 'room_list', rooms: list });
+      // Count players across ALL rooms (lobby + in-game)
+      const totalPlayers = [...rooms.values()]
+        .reduce((sum, r) => sum + [...r.players.values()].filter(p => p.connected).length, 0);
+      send(ws, { type: 'room_list', rooms: list, totalPlayers });
       return;
     }
 
@@ -625,7 +630,7 @@ wss.on('connection', (ws, req) => {
       });
       browsers.delete(ws);
       send(ws, { type:'room_joined', code: roomCode, playerId, roomName: room.roomName, players: playerList(room) });
-      broadcast(room, { type:'player_joined', player: { id:playerId, name:data.name } });
+      broadcast(room, { type:'player_joined', player: { id:playerId, name:data.name, portraitSrc:data.portraitSrc||'', profession:data.profession||'thief' } });
       pushRoomList();
       console.log(`[${roomCode}] ${data.name} (${playerId}) joined.`);
       return;

@@ -1,6 +1,6 @@
 # Car Thief Online — Development Status
 
-_Last updated: 2026-05-16 (session 30)_
+_Last updated: 2026-05-16 (session 34)_
 
 ---
 
@@ -165,7 +165,9 @@ The game ends when a player flies to the airport. Highest score (cash minus debt
 | arrested.html wiring | ✅ | arrest_result handler navigates to arrested.html |
 | store buy_item message | ❌ | |
 | sell_vehicle message | ❌ | |
-| End-to-end testing | ⚠️ | Room start works; gameplay sync not tested |
+| `player_joined` portrait | ✅ | `portraitSrc` + `profession` now included in broadcast; was `{ id, name }` only |
+| Players Online count | ✅ | Now counts players in started games too, not just lobby rooms |
+| Re-join button | ✅ | Green button on `index.html`; visible when signed in + `localStorage` has session |
 
 ---
 
