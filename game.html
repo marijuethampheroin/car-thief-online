@@ -427,8 +427,8 @@ function renderContactsModal() {
 // ── MULTIPLAYER DETECTION ─────────────────────────────────────────────────────
 // If playerId + roomCode are in sessionStorage we're in a multiplayer session.
 // Single-player (direct file open) works as before — no WebSocket needed.
-const MP_ID   = sessionStorage.getItem('playerId');
-const MP_CODE = sessionStorage.getItem('roomCode');
+const MP_ID   = sessionStorage.getItem('playerId') || localStorage.getItem('playerId');
+const MP_CODE = sessionStorage.getItem('roomCode') || localStorage.getItem('roomCode');
 const IS_MP   = !!(MP_ID && MP_CODE);
 let mpWs      = null;
 initMenu();
@@ -2145,9 +2145,8 @@ function mpHandleMsg(msg) {
       break;
 
     case 'game_over': {
-      const rows = msg.scores.map((s, i) =>
-        `${i+1}. ${s.name} — $${s.score.toLocaleString()}`
-      ).join('\n');
+      localStorage.removeItem('playerId');
+      localStorage.removeItem('roomCode');
       logMsg('── GAME OVER ──');
       msg.scores.forEach((s, i) => logMsg(`${i+1}. ${s.name}  Cash: $${s.cash.toLocaleString()}  Debt: $${s.debt.toLocaleString()}  Net: $${s.score.toLocaleString()}`));
       break;

@@ -132,8 +132,8 @@ body.crime-screen { background:#1a0e00; align-items:center; justify-content:cent
 
 <script>
 // ── MULTIPLAYER DETECTION ─────────────────────────────────────────────────────
-const MP_ID   = sessionStorage.getItem('playerId');
-const MP_CODE = sessionStorage.getItem('roomCode');
+const MP_ID   = sessionStorage.getItem('playerId') || localStorage.getItem('playerId');
+const MP_CODE = sessionStorage.getItem('roomCode') || localStorage.getItem('roomCode');
 const IS_MP   = !!(MP_ID && MP_CODE);
 let mpWs      = null;
 let mpPending = false;   // true while waiting for a server response

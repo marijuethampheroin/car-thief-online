@@ -75,6 +75,12 @@
 
 ## Session 30 — 2026-05-16 — Persistent Rooms + Player List
 
+### Fixed — `play.html`, `game.html`, `crime.html`, `index.html`
+- `playerId` and `roomCode` now stored in `localStorage` instead of `sessionStorage` — players can close and reopen the tab and still rejoin an active room
+- `game.html` and `crime.html` read from localStorage as fallback if sessionStorage is empty
+- `index.html` sign-out now also clears `playerId`/`roomCode` from localStorage
+- `game.html` `game_over` handler clears localStorage so stale room data doesn't cause a spurious rejoin attempt after the game ends
+
 ### Fixed — `server.js`
 - Grace period timer: if `room.started`, skip deletion entirely — disconnected players keep their slot and state for the full duration of the game
 - All-gone cleanup: 30-minute room deletion now only triggers if `!room.started`; started games persist until the win condition fires

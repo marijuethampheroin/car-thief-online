@@ -228,6 +228,8 @@ function doSignOut() {
   sessionStorage.removeItem('fbToken');
   sessionStorage.removeItem('fbUid');
   sessionStorage.removeItem('playerName');
+  localStorage.removeItem('playerId');
+  localStorage.removeItem('roomCode');
   location.reload();
 }
 
