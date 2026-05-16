@@ -2,6 +2,24 @@
 
 ---
 
+## Session 31 — 2026-05-15 — Day Timer Countdown
+
+### Added — `server.js`
+- `room.nextDayAt = Date.now() + DAY_DURATION` stored when `startDayTimer()` is called and reset on every tick
+- `nextDayAt` included in `game_started`, `day_advanced`, and `reconnected` message payloads
+
+### Added — `play.html`
+- `nextDayAt` saved to `sessionStorage` in the `game_started` handler alongside `locationPools` and `locDefs`
+
+### Added — `game.html`
+- `⏱ MM:SS` countdown display in HUD row 1, between Day and Debt; hidden in singleplayer
+- Turns red at ≤30 seconds remaining
+- `startDayCountdown(nextDayAt)` — sets a 1s `setInterval` ticking against the server-provided Unix timestamp; clears any previous interval before starting
+- Called from: `reconnected` handler, `day_advanced` handler, and MP init block (reads `nextDayAt` from sessionStorage on page load)
+- Timer therefore syncs correctly on fresh join, mid-game page refresh, and day rollover
+
+---
+
 ## v0.3.0 — Session 30 — 2026-05-15 — Players & Chat Modal
 
 ### Added — `game.html`

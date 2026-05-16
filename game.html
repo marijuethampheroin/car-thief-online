@@ -29,6 +29,7 @@
   background: rgba(0,0,0,0.1);
 }
 .chat-entry { font-size: 11px; line-height: 1.5; word-break: break-word; }
+.chat-entry .ce-ts { font-size: 9px; color: var(--text-dim); user-select: none; }
 .chat-entry .ce-name { font-family: 'Oswald', sans-serif; font-size: 12px; color: var(--border-light); }
 .chat-entry .ce-self { color: #ffd080; }
 .chat-entry .ce-text { color: var(--text-main); }
@@ -56,6 +57,8 @@
   <div class="hud">
     <div class="hud-row">
       <span>Day <span class="hud-val" id="day">1</span></span>
+      <span class="hud-sep" id="dayTimerSep" style="display:none">|</span>
+      <span id="dayTimer" style="display:none;font-size:10px;color:var(--text-dim)" title="Time until next day">⏱ <span id="dayTimerVal">--:--</span></span>
       <span class="hud-sep">|</span>
       <span>Debt: <span class="hud-val debt-val" id="debt">$746,800</span></span>
       <div class="hud-spacer"></div>
@@ -465,6 +468,34 @@ function renderHUD() {
 }
 renderHUD();
 renderVehicleStorage();
+
+// ── DAY TIMER COUNTDOWN ───────────────────────────────────────────────────────
+let _dayTimerInterval = null;
+
+function startDayCountdown(nextDayAt) {
+  if (!IS_MP) return;
+  if (_dayTimerInterval) clearInterval(_dayTimerInterval);
+
+  const timerEl  = document.getElementById('dayTimer');
+  const valEl    = document.getElementById('dayTimerVal');
+  const sepEl    = document.getElementById('dayTimerSep');
+  if (!timerEl || !valEl) return;
+
+  timerEl.style.display = '';
+  sepEl.style.display   = '';
+
+  function tick() {
+    const secsLeft = Math.max(0, Math.round((nextDayAt - Date.now()) / 1000));
+    const m = Math.floor(secsLeft / 60).toString().padStart(2, '0');
+    const s = (secsLeft % 60).toString().padStart(2, '0');
+    valEl.textContent = m + ':' + s;
+    // Turn red in the last 30 seconds
+    timerEl.style.color = secsLeft <= 30 ? '#e05050' : 'var(--text-dim)';
+  }
+
+  tick();
+  _dayTimerInterval = setInterval(tick, 1000);
+}
 
 // ── SKIP DAY
 // In multiplayer the server advances the day — hide this button.
@@ -1722,6 +1753,9 @@ if (IS_MP) {
 
   const _mpLocs = sessionStorage.getItem('locDefs');
   if (_mpLocs) { try { gs.mpLocDefs = JSON.parse(_mpLocs); } catch(e){} }
+
+  const _mpNextDayAt = sessionStorage.getItem('nextDayAt');
+  if (_mpNextDayAt) { try { startDayCountdown(parseInt(_mpNextDayAt, 10)); } catch(e){} }
 }
 renderMapIcons();
 
@@ -2003,6 +2037,7 @@ function mpHandleMsg(msg) {
       renderHUD();
       renderMapIcons();
       logMsg(`Day ${msg.day} — ${msg.msg}`);
+      if (msg.nextDayAt) startDayCountdown(msg.nextDayAt);
       break;
 
     case 'pool_update':
@@ -2051,6 +2086,7 @@ function mpHandleMsg(msg) {
       renderHUD();
       renderMapIcons();
       logMsg('Reconnected to game.');
+      if (msg.nextDayAt) startDayCountdown(msg.nextDayAt);
       // Seed the player list from the server's response
       if (msg.players && msg.players.length) {
         _chatRoomPlayers = msg.players.map(p => ({ ...p, connected: p.connected !== false }));
@@ -2229,12 +2265,14 @@ function renderChatPlayers() {
 function appendChatEntry(fromName, text, isSelf, isSystem) {
   const log = document.getElementById('chatLog');
   if (!log) return;
+  const now = new Date();
+  const ts  = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
   const div = document.createElement('div');
   div.className = 'chat-entry' + (isSystem ? ' ce-system' : '');
   if (isSystem) {
-    div.innerHTML = `<span class="ce-text">${esc(text)}</span>`;
+    div.innerHTML = `<span class="ce-ts">${ts}</span> <span class="ce-text">${esc(text)}</span>`;
   } else {
-    div.innerHTML = `<span class="ce-name ${isSelf ? 'ce-self' : ''}">${esc(fromName)}:</span> <span class="ce-text">${esc(text)}</span>`;
+    div.innerHTML = `<span class="ce-ts">${ts}</span> <span class="ce-name ${isSelf ? 'ce-self' : ''}">${esc(fromName)}:</span> <span class="ce-text">${esc(text)}</span>`;
   }
   log.appendChild(div);
   log.scrollTop = log.scrollHeight;

@@ -145,14 +145,16 @@ function playerList(room) {
 
 function startDayTimer(room) {
   if (room.dayTimer) clearInterval(room.dayTimer);
+  room.nextDayAt = Date.now() + DAY_DURATION;
   room.dayTimer = setInterval(() => {
     room.day++;
+    room.nextDayAt = Date.now() + DAY_DURATION;
     // Advance every player's state
     for (const [id, state] of room.playerStates) {
       const msg = logic.advanceDay(state);
       const p = room.players.get(id);
       if (p && p.ws && p.ws.readyState === 1) {
-        send(p.ws, { type:'day_advanced', state, msg, day: room.day });
+        send(p.ws, { type:'day_advanced', state, msg, day: room.day, nextDayAt: room.nextDayAt });
       }
     }
     // Refresh shared vehicle pools
@@ -266,6 +268,7 @@ function handleMessage(ws, playerId, roomCode, data) {
           locationPools: room.locationPools,
           locDefs: room.locDefs,
           players: playerList(room),
+          nextDayAt: room.nextDayAt,
         });
       }
       pushRoomList();
@@ -645,7 +648,7 @@ wss.on('connection', (ws, req) => {
       p.ws = ws; p.connected = true;
       if (p._disconnectTimer) { clearTimeout(p._disconnectTimer); p._disconnectTimer = null; }
       const state = room.playerStates.get(playerId);
-      send(ws, { type:'reconnected', state, locationPools: room.locationPools, locDefs: room.locDefs, players: playerList(room) });
+      send(ws, { type:'reconnected', state, locationPools: room.locationPools, locDefs: room.locDefs, players: playerList(room), nextDayAt: room.nextDayAt });
       broadcast(room, { type:'player_reconnected', playerId });
       console.log(`[${roomCode}] ${p.name} reconnected.`);
       return;
