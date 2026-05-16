@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -142,7 +141,7 @@ let mpPending = false;   // true while waiting for a server response
 let turnNum=1,sceneOver=false,selectedAct=null;
 let gs=loadState();
 if(!gs)window.location.href="game.html";
-let policeLevel = Math.min(100, (gs.policeReadiness || 0) + 20); // scene starts 20 above persisted readiness
+let policeLevel = Math.min(100, (gs.policeReadiness || 0) + 20);
 
 // ── SCENE STATE ───────────────────────────────────────────────────────────────
 let sceneState = {
@@ -154,12 +153,11 @@ let sceneState = {
   teller_approached: false, teller_complied: false, alarm_triggered: false,
   teller_cash_taken: false, manager_found: false, manager_complied: false,
   vault_open: false,
-  bags_remaining: 2 + Math.floor(Math.random() * 3), // 2–4 bags
+  bags_remaining: 2 + Math.floor(Math.random() * 3),
   bags_taken: 0,
 };
 
 // ── ACTIVE TEAM CHECK ─────────────────────────────────────────────────────────
-// Block entry if no one is on the active team (player at hideout, no active crew)
 (function checkActiveTeam() {
   const activeHired = (gs.contacts || []).filter(
     c => c.status === 'hired' && c.assignedLocation !== 'hideout'
@@ -169,12 +167,10 @@ let sceneState = {
     window.location.href = 'game.html';
   }
 })();
-// Increment crime counter on entry
 gs.crimesCommitted = (gs.crimesCommitted || 0) + 1;
 saveState(gs);
 const tgtLoc=sessionStorage.getItem("targetLocation");
 const loc=tgtLoc?JSON.parse(tgtLoc):{type:"residential",label:"Residential Area",method:"steal"};
-// vehicle — populated from vehicle pool via main.html; fallback for direct navigation
 const vehData=loc.vehicle||{name:"Unknown Vehicle",body:"Sedan",seats:4,price:5000,speed:60,lockDef:20,elecDef:20,condition:50,imgIdx:1};
 const vehicle={lockDef:vehData.lockDef, elecDef:vehData.elecDef, body:(vehData.body||'').toLowerCase()};
 const sceneImgs={
@@ -185,16 +181,12 @@ const sceneImgs={
   bank:"Graphics/UI_elements/group_office.bmp"
 };
 document.getElementById("sceneImg").src=sceneImgs[loc.type]||sceneImgs.residential;
-// activities.bmp indices (14 buttons, 0-based left to right)
-// 0=skip/rest, 1=pick lock, 2=approach/walk, 3=flee/leave, 4=show gun,
-// 5=drive away, 6=advance, 7=take stuff, 8=pick ignition, 9=ask to go out,
-// 10=smash/break, 11=hotwire, 12=give up, 13=case area / check GPS
 function actImg(idx){return `background-position:calc(${idx}/13*100%) 0`;}
 const actDefs={
   case_the_area:        {label:"Case the Area",              bi:3},
   lockpick_door:        {label:"Pick the Door Lock",         bi:1},
   slim_jim:             {label:"Use Slim Jim Kit",            bi:1},
-  door_opener:          {label:"Use Pump Wedge",                bi:1},
+  door_opener:          {label:"Use Pump Wedge",             bi:1},
   smash_window:         {label:"Break the Window",           bi:1},
   hotwire_engine:       {label:"Hot-wire the Ignition",      bi:4},
   pick_ignition:        {label:"Pick the Ignition Lock",     bi:1},
@@ -211,7 +203,6 @@ const actDefs={
   distract_owner:       {label:"Distract Owner",             bi:2},
   flee:                 {label:"Leave the Crime Scene",      bi:10},
   skip_turn:            {label:"Skip This Turn",             bi:0},
-  // bank
   bank_give_note:       {label:"Pass a Note to Teller",      bi:7},
   bank_announce:        {label:"Announce the Robbery",       bi:12},
   bank_demand_teller:   {label:"Demand Cash from Teller",    bi:7},
@@ -223,7 +214,6 @@ const actDefs={
 };
 
 function getValidActions(locType, ss, playerGs) {
-  // Build eligible crew inventories (player + hired contacts with no assignment)
   const GUN_IDS = ['pistol','shotgun','rifle'];
   const allInvs = [playerGs ? (playerGs.inventory||[]) : []];
   for (const c of ((playerGs && playerGs.contacts)||[])) {
@@ -231,16 +221,13 @@ function getValidActions(locType, ss, playerGs) {
       allInvs.push(c.inventory || []);
     }
   }
-  function teamHasItem(id)     { return allInvs.some(inv => inv.some(i => i && (i.id||'').toLowerCase() === id)); }
   const hasGun      = allInvs.some(inv => inv.some(i => i && GUN_IDS.includes((i.id||'').toLowerCase())));
-  const inv         = (playerGs && playerGs.inventory) || [];
-  function hasTool(id)       { return allInvs.some(inv => inv.some(i => i && (i.id||'') === id)); }
-  function hasPickTool()     { return allInvs.some(inv => inv.some(i => i && ['tryout_keys','lock_pick_set','snap_gun','pro_pick_set','ignition_decoder'].includes(i.id||''))); }
-  function hasWiringTool()   { return allInvs.some(inv => inv.some(i => i && ['wire_cutter','wire_stripper','multimeter','probelight'].includes(i.id||''))); }
+  function hasTool(id)     { return allInvs.some(inv => inv.some(i => i && (i.id||'') === id)); }
+  function hasPickTool()   { return allInvs.some(inv => inv.some(i => i && ['tryout_keys','lock_pick_set','snap_gun','pro_pick_set','ignition_decoder'].includes(i.id||''))); }
+  function hasWiringTool() { return allInvs.some(inv => inv.some(i => i && ['wire_cutter','wire_stripper','multimeter','probelight'].includes(i.id||''))); }
   const acts = [];
 
   if (locType === 'highway') {
-    // ── HIJACK ──
     if (!ss.driverRemoved) {
       if (!ss.approached) acts.push('approach_driver');
       if (!ss.escalationFailed) {
@@ -251,7 +238,6 @@ function getValidActions(locType, ss, playerGs) {
       acts.push('force_out_of_vehicle');
       if (hasGun)            acts.push('shoot_driver');
     } else {
-      // Driver removed — GPS step
       if (!ss.gpsChecked && !ss.gpsSkipped) {
         acts.push('check_gps');
         acts.push('skip_gps');
@@ -260,9 +246,7 @@ function getValidActions(locType, ss, playerGs) {
       }
     }
     acts.push('flee');
-
   } else if (locType === 'racing') {
-    // ── RACING AREA ──
     if (!ss.ownerDistracted) {
       acts.push('distract_owner');
     } else if (!ss.doorOpen) {
@@ -272,7 +256,7 @@ function getValidActions(locType, ss, playerGs) {
                                  acts.push('smash_window');
     } else if (ss.alarmActive && !ss.alarmDisabled) {
       if (hasWiringTool())       acts.push('disable_alarm');
-      if (hasWiringTool())       acts.push('hotwire_engine'); // risky
+      if (hasWiringTool())       acts.push('hotwire_engine');
     } else if (!ss.engineStarted) {
       if (hasWiringTool())       acts.push('hotwire_engine');
       if (hasPickTool())         acts.push('pick_ignition');
@@ -284,25 +268,7 @@ function getValidActions(locType, ss, playerGs) {
     }
     acts.push('case_the_area');
     acts.push('flee');
-
-  } else if (locType === 'bank') {
-    // ── BANK ROBBERY ──
-    if (!ss.teller_approached) {
-      acts.push('bank_give_note');
-      if (hasGun) acts.push('bank_announce');
-    } else {
-      if (!ss.teller_cash_taken) acts.push('bank_demand_teller');
-    }
-    if (ss.teller_approached && hasGun) {
-      if (!ss.manager_found)                         acts.push('bank_find_manager');
-      if (ss.manager_found && !ss.manager_complied)  acts.push('bank_lead_to_vault');
-      if (ss.manager_complied && !ss.vault_open)     acts.push('bank_demand_vault');
-      if (ss.vault_open && ss.bags_remaining > 0)    acts.push('bank_fill_bag');
-    }
-    acts.push('bank_leave');
-
   } else {
-    // ── COVERT STEAL (residential / busy) ──
     if (!ss.doorOpen) {
       acts.push('case_the_area');
       if (hasPickTool())         acts.push('lockpick_door');
@@ -311,8 +277,8 @@ function getValidActions(locType, ss, playerGs) {
                                  acts.push('smash_window');
     } else if (ss.alarmActive && !ss.alarmDisabled) {
       if (hasWiringTool())       acts.push('disable_alarm');
-      if (hasWiringTool())       acts.push('hotwire_engine'); // risky
-      if (hasPickTool())         acts.push('pick_ignition');  // risky
+      if (hasWiringTool())       acts.push('hotwire_engine');
+      if (hasPickTool())         acts.push('pick_ignition');
     } else if (!ss.engineStarted) {
       if (hasWiringTool())       acts.push('hotwire_engine');
       if (hasPickTool())         acts.push('pick_ignition');
@@ -338,7 +304,6 @@ function buildActionBar(){
     row.addEventListener("click",()=>selectAction(key));
     bar.appendChild(row);
   });
-  // Re-select previous action if still valid, else select first
   if (selectedAct && acts.includes(selectedAct)) {
     selectAction(selectedAct);
   } else if (acts.length) {
@@ -346,7 +311,6 @@ function buildActionBar(){
   }
 }
 buildActionBar();
-// Sync police bar to loaded readiness
 document.getElementById("policeFill").style.width = policeLevel + "%";
 document.getElementById("policeVal").textContent  = policeLevel;
 function selectAction(key){
@@ -360,10 +324,8 @@ function makeSlots(id,count){
 makeSlots("crimeTargetSlots",6);makeSlots("yourTargetSlots",6);makeSlots("teamSlots",6);makeSlots("reserveSlots",6);
 const teamEl=document.getElementById("teamSlots");
 const teamSlotEls=teamEl.querySelectorAll(".rp-slot");
-// Slot 0 — player
 if(gs.portraitSrc)teamSlotEls[0].innerHTML=`<img src="${gs.portraitSrc}" onerror="this.style.opacity=0">`;
 teamSlotEls[0].addEventListener("click",()=>renderCrimeLeft({type:"character"}));
-// Slots 1+ — unassigned hired crew
 const activeCrew=(gs.contacts||[]).filter(c=>c.status==='hired'&&(c.assignedLocation===null||c.assignedLocation===undefined));
 activeCrew.slice(0,5).forEach((c,i)=>{
   const sl=teamSlotEls[i+1];
@@ -373,7 +335,8 @@ activeCrew.slice(0,5).forEach((c,i)=>{
   sl.title=c.name;
   sl.addEventListener("click",()=>renderCrimeLeft({type:"contact",data:c}));
 });
-document.getElementById("yourTargetSlots").querySelector(".rp-slot").addEventListener("click",()=>{ if(vehData) renderCrimeLeft({type:"vehicle",data:vehData}); });
+document.getElementById("yourTargetSlots").querySelector(".rp-slot").addEventListener("click",()=>renderCrimeLeft({type:"vehicle",data:vehData}));
+
 function renderCrimeLeft(ctx){
   const lp=document.getElementById("crimeLeft");
   if(ctx.type==="vehicle")lp.innerHTML=renderVehicleView(ctx.data);
@@ -426,70 +389,61 @@ function addPolice(amount){
   if(policeLevel>=60){const sec=document.getElementById("policeSection");if(sec.style.display==="none"){sec.style.display="";makeSlots("policeSlots",6);logMsg("You see the Police Patrol.","bad");}}
   if(policeLevel>=100&&!sceneOver)endScene("busted");
 }
+
 function endScene(result){
   sceneOver=true;document.getElementById("turnBtn").disabled=true;
   document.querySelectorAll(".act-icon").forEach(b=>b.style.opacity="0.4");
-  // Persist readiness back to game state
   gs.policeReadiness = policeLevel;
   saveState(gs);
   if(result==="busted"){
     logMsg("POLICE ARRIVE — YOU ARE BUSTED!","bad");
     gs.arrests=(gs.arrests||0)+1;
     if(IS_MP && mpWs && mpWs.readyState===1){
-      // Release vehicle lock back to pool
       if(vehData && vehData.uid) mpWs.send(JSON.stringify({ type:'steal_abort', uid: vehData.uid }));
-      // Server applies penalties and returns updated state via arrest_result
       mpWs.send(JSON.stringify({ type:'arrest' }));
     } else {
       const penalty=applyArrestPenalties(gs);
-      // Jail all active crew members
-      const jailDays = 2 + Math.floor((gs.wantedLevel || 0) / 2); // 2–4 days depending on heat
+      const jailDays = 2 + Math.floor((gs.wantedLevel || 0) / 2);
       (gs.activeTeam || []).forEach(id => jailContact(gs, id, jailDays));
       sessionStorage.setItem('arrestResult', JSON.stringify(penalty));
     }
     setTimeout(()=>window.location.href="arrested.html",1800);
   }
   else if(result==="success"){
-    logMsg("You drive away with the vehicle! Returning to the city...","good");
+    logMsg("You drive away with the vehicle. Back to the city.","good");
     if(IS_MP && mpWs && mpWs.readyState===1){
-      // Server records the vehicle in player state; client updates on state_update
       mpWs.send(JSON.stringify({ type:'steal_success', vehicle: vehData, uid: vehData && vehData.uid }));
     } else {
       const slot = assignVehicleToTeam(gs, vehData);
-      if (slot === 'garage') {
-        logMsg('Garage full — vehicle lost.', 'bad');
-      }
+      if (slot === 'garage') logMsg('Garage is full — vehicle lost.', 'bad');
       if(loc.locId&&vehData.uid)removeVehicleFromPool(gs,loc.locId,vehData.uid);
       else saveState(gs);
     }
     setTimeout(()=>window.location.href="game.html",2000);
   }
   else if(result==="fled"){
-    logMsg("You leave the scene empty-handed.","sys");
+    logMsg("You leave empty-handed.","sys");
     if(IS_MP && mpWs && mpWs.readyState===1 && vehData && vehData.uid){
       mpWs.send(JSON.stringify({ type:'steal_abort', uid: vehData.uid }));
     }
     setTimeout(()=>window.location.href="game.html",1200);
   }
   else if(result==="bank_success"){
-    logMsg("You walk out of the bank. Time to drive.","good");
+    logMsg("You walk out of the bank. Time to move.","good");
     saveState(gs);
     setTimeout(()=>window.location.href="game.html",1800);
   }
 }
+
 function doTurn(){
   if(sceneOver||mpPending)return;
   if(!selectedAct){logMsg("Select an activity first.","bad");return;}
-
   if(IS_MP && mpWs && mpWs.readyState===1){
-    // Multiplayer: ask server to resolve the action
     mpPending=true;
     document.getElementById("turnBtn").disabled=true;
     mpWs.send(JSON.stringify({ type:'do_action', action:selectedAct, vehicle }));
     return;
   }
-
-  // Single-player: resolve locally (unchanged path)
   _applyTurnResult(resolveAction(selectedAct,gs,vehicle,sceneState));
 }
 
@@ -505,63 +459,60 @@ function _applyTurnResult(outcome){
       if(lp.querySelector('.char-info')) renderCrimeLeft({type:'character'});
     }
   }
-  // Merge scene state updates
-  if (outcome.stateUpdate) {
-    Object.assign(sceneState, outcome.stateUpdate);
-  }
-  if (outcome.pendingTracker) {
-    gs.pendingTrackerCheck = true;
-    saveState(gs);
-  }
+  if (outcome.stateUpdate) Object.assign(sceneState, outcome.stateUpdate);
+  if (outcome.pendingTracker) { gs.pendingTrackerCheck = true; saveState(gs); }
   const heatRise = Math.round((outcome.policeRise||0) * (1 + (gs.wantedLevel||0) * 0.1));
   addPolice(heatRise);
   if(!sceneOver){
     if(outcome.progress==="success") startDriveAway();
     else if(outcome.progress==="fled") endScene("fled");
     else if(outcome.progress==="bank_leave") startBankExit();
-    else buildActionBar(); // rebuild after every non-terminal turn
+    else buildActionBar();
   }
   if(!sceneOver){turnNum++;}
 }
+
 function startDriveAway(){
   sceneOver = true;
   document.getElementById("turnBtn").disabled = true;
   document.querySelectorAll(".act-icon").forEach(b => b.style.opacity = "0.4");
   const chase = resolveDriveAway(gs, policeLevel, vehData.speed || 60);
-  chase.msgs.forEach(m => {
-    setTimeout(() => logMsg(m.text, m.cls), m.delay);
-  });
+  chase.msgs.forEach(m => { setTimeout(() => logMsg(m.text, m.cls), m.delay); });
   const finalDelay = chase.msgs[chase.msgs.length - 1].delay + 800;
-  if (chase.result === 'escaped') {
-    setTimeout(() => endScene('success'), finalDelay);
-  } else {
-    setTimeout(() => endScene('busted'), finalDelay);
-  }
+  if (chase.result === 'escaped') setTimeout(() => endScene('success'), finalDelay);
+  else setTimeout(() => endScene('busted'), finalDelay);
 }
+
 function startBankExit(){
   sceneOver = true;
   document.getElementById("turnBtn").disabled = true;
   document.querySelectorAll(".act-icon").forEach(b => b.style.opacity = "0.4");
-  // Reuse drive-away logic — bank getaway car has generic speed
   const chase = resolveDriveAway(gs, policeLevel, 70);
-  chase.msgs.forEach(m => {
-    setTimeout(() => logMsg(m.text, m.cls), m.delay);
-  });
+  chase.msgs.forEach(m => { setTimeout(() => logMsg(m.text, m.cls), m.delay); });
   const finalDelay = chase.msgs[chase.msgs.length - 1].delay + 800;
-  if (chase.result === 'escaped') {
-    setTimeout(() => endScene('bank_success'), finalDelay);
-  } else {
-    setTimeout(() => endScene('busted'), finalDelay);
-  }
+  if (chase.result === 'escaped') setTimeout(() => endScene('bank_success'), finalDelay);
+  else setTimeout(() => endScene('busted'), finalDelay);
 }
+
 function leaveScene(){if(confirm("Leave the crime scene? Any progress will be lost.")){gs.policeReadiness=policeLevel;saveState(gs);window.location.href="game.html";}}
 
 // ── MULTIPLAYER WEBSOCKET ─────────────────────────────────────────────────────
 function mpHandleMsg(msg){
   switch(msg.type){
 
+    case 'steal_ack':
+      // Vehicle locked — proceed normally
+      break;
+
+    case 'steal_nack':
+      // Someone else just grabbed that one
+      logMsg("Someone else just grabbed that one. Heading back...", 'bad');
+      sceneOver = true;
+      document.getElementById('turnBtn').disabled = true;
+      setTimeout(() => window.location.href = 'game.html', 2000);
+      break;
+
     case 'action_result':
-      // Server resolved the action — apply and re-enable turn button
       gs = msg.state;
       saveState(gs);
       mpPending = false;
@@ -570,20 +521,18 @@ function mpHandleMsg(msg){
       break;
 
     case 'arrest_result':
-      // Server applied arrest penalties — store for arrested.html
       gs = msg.state;
       saveState(gs);
       sessionStorage.setItem('arrestResult', JSON.stringify(msg.penalties));
+      window.location.href = 'arrested.html';
       break;
 
     case 'state_update':
-      // Covers steal_success and any other server-side state changes
       gs = msg.state;
       saveState(gs);
       break;
 
     case 'pool_update':
-      // Keep local pool in sync (another player stole from same loc)
       if(gs.locationPools) gs.locationPools = msg.locationPools;
       saveState(gs);
       break;
@@ -601,6 +550,9 @@ if(IS_MP){
   mpWs = new WebSocket(wsUrl);
   mpWs.onopen = () => {
     mpWs.send(JSON.stringify({ type:'reconnect', code: MP_CODE, playerId: MP_ID }));
+    if (vehData && vehData.uid && loc.locId) {
+      mpWs.send(JSON.stringify({ type:'steal_claim', locId: loc.locId, uid: vehData.uid }));
+    }
   };
   mpWs.onmessage = (e) => {
     try{ mpHandleMsg(JSON.parse(e.data)); } catch(err){ console.error('MP msg error:',err); }
@@ -609,23 +561,18 @@ if(IS_MP){
   mpWs.onclose = () => logMsg('Disconnected from server.','sys');
 }
 
-// ── BACKPACK ITEM RIGHT-CLICK POPUP (crime screen) ────────────────────────────
+// ── BACKPACK ITEM RIGHT-CLICK POPUP ───────────────────────────────────────────
 document.getElementById('crimeLeft').addEventListener('contextmenu', e => {
   const slot = e.target.closest('.bp-slot');
   if (!slot) return;
   e.preventDefault();
   e.stopPropagation();
-
   const slotIdx = [...slot.parentElement.children].indexOf(slot);
   const item = gs.inventory[slotIdx];
   closeCrimeItemPopup();
   if (!item) return;
-
   const mappedAction = ITEM_ACTION_MAP[item.cat] || null;
-  const actionLabel  = mappedAction
-    ? mappedAction.replace(/_/g, ' ')
-    : null;
-
+  const actionLabel  = mappedAction ? mappedAction.replace(/_/g, ' ') : null;
   const popup = document.createElement('div');
   popup.id = 'itemPopup';
   popup.innerHTML = `
@@ -637,12 +584,10 @@ document.getElementById('crimeLeft').addEventListener('contextmenu', e => {
         : `<div class="ip-no-use">No crime use for this item</div>`}
       <button class="ip-cancel">Cancel</button>
     </div>`;
-
   const r = slot.getBoundingClientRect();
   popup.style.top  = (r.bottom + 4 + window.scrollY) + 'px';
   popup.style.left = (r.left  + window.scrollX) + 'px';
   document.body.appendChild(popup);
-
   if (mappedAction) {
     popup.querySelector('.ip-use').addEventListener('click', () => {
       closeCrimeItemPopup();
@@ -656,19 +601,11 @@ document.getElementById('crimeLeft').addEventListener('contextmenu', e => {
   }
   popup.querySelector('.ip-cancel').addEventListener('click', closeCrimeItemPopup);
 });
+function closeCrimeItemPopup() { const p = document.getElementById('itemPopup'); if (p) p.remove(); }
+document.addEventListener('click', e => { if (!e.target.closest('#itemPopup, .bp-slot')) closeCrimeItemPopup(); });
+document.addEventListener('contextmenu', e => { if (!e.target.closest('.bp-slot')) closeCrimeItemPopup(); });
 
-function closeCrimeItemPopup() {
-  const p = document.getElementById('itemPopup');
-  if (p) p.remove();
-}
-document.addEventListener('click', e => {
-  if (!e.target.closest('#itemPopup, .bp-slot')) closeCrimeItemPopup();
-});
-document.addEventListener('contextmenu', e => {
-  if (!e.target.closest('.bp-slot')) closeCrimeItemPopup();
-});
-
-// ── MODAL SYSTEM (crime screen) ───────────────────────────────────────────────
+// ── MODAL SYSTEM ──────────────────────────────────────────────────────────────
 function showModal(title, bodyHTML) {
   closeModal();
   const overlay = document.createElement('div');

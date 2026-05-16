@@ -2,6 +2,31 @@
 
 ---
 
+## Session 33 — 2026-05-15 — race.html MP wiring
+
+### Changed — `race.html`
+- Added MP detection (`IS_MP`, `MP_ID`, `MP_CODE`) and WS connection with reconnect on open
+- Turn button now sends `race_turn` to server in MP instead of resolving locally
+- Added `race_turn_result` handler: applies log, updates meters, applies server state; on finish calls `mpFinishRace()` — no local `resolveRaceWin/Loss` calls in MP
+- Added `mpFinishRace()`: saves server state, shows Close button, dims opponent arrow on player win
+- SP path entirely unchanged — all MP code gated behind `IS_MP`
+- Countdown log text cleaned up ("His hand drops... GO!")
+
+---
+
+## Session 32 — 2026-05-15 — steal_claim conflict resolution + arrest navigation
+
+### Changed — `crime.html`
+- `mpWs.onopen` now sends `steal_claim` (locId + uid) immediately after reconnect, locking the target vehicle in the server's shared pool for the duration of the steal attempt
+- Added `steal_ack` handler — silent no-op, proceed normally
+- Added `steal_nack` handler — "Someone else just grabbed that one. Heading back..." → redirects to `game.html` after 2s
+- `arrest_result` handler now navigates to `arrested.html` after saving state and storing penalties (was missing the redirect)
+- `endScene("fled")` message improved: "You leave empty-handed." (was awkward original phrasing)
+- `endScene("success")` message improved: "You drive away with the vehicle. Back to the city."
+- Restored `startBankExit()` and `bank_success` end scene branch (were present in working version, missing from backup)
+
+---
+
 ## Session 31 — 2026-05-15 — Day Timer Countdown
 
 ### Added — `server.js`
@@ -846,3 +871,17 @@ New cases added to `resolveAction()`:
 ### Changes
 - **`index.html`** — Rebuilt as landing page. Shows title, description, live multiplayer stats (rooms/players via WS), Sign In/Out in auth bar, Play Multiplayer button (requires login → `play.html`), Play Solo button (→ `classic.html`, stub), Leaderboard link.
 - **`play.html`** — New file, copied from old `index.html`. Solo tab removed entirely. Login gate added on page load (redirects to `auth.html?then=play.html` if no token). `doSolo()` removed. `auth.html` redirect targets updated from `index.html` → `play.html`.
+
+## Session 30 — Inline MP panel
+
+### Changes — `game.html`
+- Restructured center column: `.map-wrap` is now a flex column containing a new `.map-canvas` div (the map image and injected icons) and a new `.mp-inline` div below it (players list + chat)
+- `renderMapIcons()` updated: `mapWrap` → `mapCanvas` for icon injection target
+- `renderChatPlayers()` updated: now mirrors player list into `#mpPlayerList` as `.mp-player-entry` rows with portrait, name, profession, and status dot
+- `appendChatEntry()` updated: now appends to both `#chatLog` (modal) and `#mpChatLog` (inline panel) using a shared `makeEntry()` factory
+- Added `sendChatMsgInline()` function wired to `#mpChatSendBtn` click and `#mpChatInput` Enter key
+
+### Changes — `styles_v2.css`
+- `.map-wrap` changed from `position:relative` container to `display:flex; flex-direction:column`
+- `.map-canvas` added: takes `flex:1`, carries the overlay `::after` and `position:relative/overflow:hidden` that `.map-wrap` previously had
+- Added inline MP panel CSS block: `.mp-inline`, `.mp-players`, `.mp-player-entry`, `.mp-player-name`, `.mp-player-status`, `.mp-status-dot`, `.mp-chat`, `.mp-log`, `.mp-chat-input-row`, `.mp-chat-input`, `.mp-chat-send`

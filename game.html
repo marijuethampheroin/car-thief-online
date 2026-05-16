@@ -89,12 +89,26 @@
     <div class="left-panel" id="leftPanel">
     </div>
 
-    <!-- CENTER: Map -->
+    <!-- CENTER: Map + MP Panel -->
     <div class="map-wrap" id="mapWrap">
-      <!-- city map image set dynamically from gs.currentCity -->
-      <img class="map-bg" id="mapBg" src=""
-           onerror="this.style.opacity='0.15'" alt="City Map">
-      <!-- map icons injected by JS -->
+      <div class="map-canvas" id="mapCanvas">
+        <!-- city map image set dynamically from gs.currentCity -->
+        <img class="map-bg" id="mapBg" src=""
+             onerror="this.style.opacity='0.15'" alt="City Map">
+        <!-- map icons injected by JS -->
+      </div>
+      <div class="mp-inline" id="mpInline">
+        <div class="mp-players" id="mpPlayerList"></div>
+        <div class="mp-chat">
+          <div class="mp-log" id="mpChatLog">
+            <div class="chat-entry ce-system">Game chat — visible to all players in the room.</div>
+          </div>
+          <div class="mp-chat-input-row">
+            <input class="text-input mp-chat-input" id="mpChatInput" placeholder="Say something..." maxlength="120">
+            <button class="btn btn-sm mp-chat-send" id="mpChatSendBtn">Send</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- RIGHT: Team / Hideout / Garage -->
@@ -1685,7 +1699,7 @@ applyCityMap();
 // Icons come from the city system in game.js — getCityLocations(gs).
 // Re-running renderMapIcons() rebuilds the map (called on load and after travel).
 function renderMapIcons() {
-  const mw = document.getElementById('mapWrap');
+  const mw = document.getElementById('mapCanvas');
   // Remove old icons
   mw.querySelectorAll('.map-icon').forEach(el => el.remove());
 
@@ -2247,12 +2261,13 @@ function closeChatModal() {
 
 function renderChatPlayers() {
   const el = document.getElementById('chatPlayerList');
-  if (!el) return;
+  const mpEl = document.getElementById('mpPlayerList');
   if (!_chatRoomPlayers.length) {
-    el.innerHTML = '<span style="font-size:11px;color:var(--text-dim);padding:0 4px">No player data yet.</span>';
+    if (el) el.innerHTML = '<span style="font-size:11px;color:var(--text-dim);padding:0 4px">No player data yet.</span>';
+    if (mpEl) mpEl.innerHTML = '<div style="font-size:10px;color:var(--text-dim);padding:6px">No players yet.</div>';
     return;
   }
-  el.innerHTML = _chatRoomPlayers.map(p => {
+  const modalHtml = _chatRoomPlayers.map(p => {
     const isSelf = p.id === (MP_ID || 'self');
     return `<div class="chat-player" title="${esc(p.profession || '')}">
       <span class="cp-dot${p.connected === false ? ' away' : ''}"></span>
@@ -2260,22 +2275,38 @@ function renderChatPlayers() {
       <span>${esc(p.name)}${isSelf ? ' <span style="color:#ffd080;font-size:9px">(you)</span>' : ''}</span>
     </div>`;
   }).join('');
+  if (el) el.innerHTML = modalHtml;
+  if (mpEl) mpEl.innerHTML = _chatRoomPlayers.map(p => {
+    const isSelf   = p.id === (MP_ID || 'self');
+    const dotColor = p.connected === false ? '#555' : '#4caf50';
+    return `<div class="mp-player-entry">
+      ${p.portraitSrc ? `<img src="${esc(p.portraitSrc)}" onerror="this.style.opacity='0.2'">` : '<div style="width:22px;height:28px;background:var(--bg-dark);border:1px solid var(--border-dark);flex-shrink:0"></div>'}
+      <div style="flex:1;min-width:0">
+        <div class="mp-player-name">${esc(p.name)}${isSelf ? ' <span style="color:#ffd080;font-size:9px">(you)</span>' : ''}</div>
+        <div class="mp-player-status">${esc(p.profession || '')}</div>
+      </div>
+      <div class="mp-status-dot" style="background:${dotColor}"></div>
+    </div>`;
+  }).join('');
 }
 
 function appendChatEntry(fromName, text, isSelf, isSystem) {
-  const log = document.getElementById('chatLog');
-  if (!log) return;
   const now = new Date();
   const ts  = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
-  const div = document.createElement('div');
-  div.className = 'chat-entry' + (isSystem ? ' ce-system' : '');
-  if (isSystem) {
-    div.innerHTML = `<span class="ce-ts">${ts}</span> <span class="ce-text">${esc(text)}</span>`;
-  } else {
-    div.innerHTML = `<span class="ce-ts">${ts}</span> <span class="ce-name ${isSelf ? 'ce-self' : ''}">${esc(fromName)}:</span> <span class="ce-text">${esc(text)}</span>`;
+  function makeEntry() {
+    const div = document.createElement('div');
+    div.className = 'chat-entry' + (isSystem ? ' ce-system' : '');
+    if (isSystem) {
+      div.innerHTML = `<span class="ce-ts">${ts}</span> <span class="ce-text">${esc(text)}</span>`;
+    } else {
+      div.innerHTML = `<span class="ce-ts">${ts}</span> <span class="ce-name ${isSelf ? 'ce-self' : ''}">${esc(fromName)}:</span> <span class="ce-text">${esc(text)}</span>`;
+    }
+    return div;
   }
-  log.appendChild(div);
-  log.scrollTop = log.scrollHeight;
+  const log = document.getElementById('chatLog');
+  if (log) { log.appendChild(makeEntry()); log.scrollTop = log.scrollHeight; }
+  const mpLog = document.getElementById('mpChatLog');
+  if (mpLog) { mpLog.appendChild(makeEntry()); mpLog.scrollTop = mpLog.scrollHeight; }
 }
 
 function sendChatMsg() {
@@ -2292,6 +2323,22 @@ function sendChatMsg() {
 
 document.getElementById('chatInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') sendChatMsg();
+});
+
+function sendChatMsgInline() {
+  if (!IS_MP) return;
+  const inp  = document.getElementById('mpChatInput');
+  const text = (inp.value || '').trim();
+  if (!text) return;
+  if (mpWs && mpWs.readyState === 1) {
+    mpWs.send(JSON.stringify({ type: 'chat_message', text }));
+    inp.value = '';
+    inp.focus();
+  }
+}
+document.getElementById('mpChatSendBtn').addEventListener('click', sendChatMsgInline);
+document.getElementById('mpChatInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') sendChatMsgInline();
 });
 </script>
 </body>

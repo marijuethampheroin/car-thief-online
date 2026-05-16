@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Car Thief Online — Race</title>
+<title>Car Thief Online ï¿½ Race</title>
 <link rel="stylesheet" href="styles.css">
 <script src="game.js"></script>
 <link rel="manifest" href="/manifest.json">
@@ -95,7 +95,7 @@
 
   </div><!-- /game-body -->
 
-  <!-- STATUS BAR — Police meters -->
+  <!-- STATUS BAR ï¿½ Police meters -->
   <div class="status-bar">
     <span style="font-size:10px;color:var(--text-dim)">Police Awareness</span>
     <div class="meter-track" style="width:90px"><div class="meter-fill wanted" id="awarenessFill" style="width:0%"></div></div>
@@ -114,16 +114,21 @@
   <!-- MESSAGE LOG -->
   <div class="msg-strip">
     <div class="msg-text" id="msgText"><p>The race is about to begin.</p></div>
-    <button class="msg-more" title="Message archive">···</button>
+    <button class="msg-more" title="Message archive">ï¿½ï¿½ï¿½</button>
   </div>
 
 </div><!-- /window -->
 
 <script>
+// -- Multiplayer detection ----------------------------------------------------
+const MP_ID   = sessionStorage.getItem('playerId');
+const MP_CODE = sessionStorage.getItem('roomCode');
+const IS_MP   = !!(MP_ID && MP_CODE);
+let mpWs      = null;
+
 // -- State --------------------------------------------------------------------
 let gs = loadState();
 if (!gs || !gs.currentRace) {
-  // Direct navigation without a race set up — redirect home
   window.location.href = 'game.html';
 }
 
@@ -158,7 +163,7 @@ if (portrait) {
 }
 
 renderCarSlot(document.getElementById('oppCarSlot'), ov);
-// Random NPC portrait from enemy01–111.bmp
+// Random NPC portrait from enemy01ï¿½111.bmp
 const npcIdx = String(Math.floor(Math.random() * 111) + 1).padStart(2, '0');
 document.getElementById('oppPortraitSlot').innerHTML =
   `<img src="Graphics/enemy_portraits/enemy${npcIdx}.bmp" style="width:100%;height:100%;object-fit:cover;object-position:top" onerror="this.style.opacity='0'">`;
@@ -207,47 +212,89 @@ let raceFinished = false;
 document.getElementById('turnBtn').addEventListener('click', () => {
   if (raceFinished) return;
 
-  // Reload state (in case anything changed)
+  if (IS_MP && mpWs && mpWs.readyState === 1) {
+    document.getElementById('turnBtn').disabled = true;
+    mpWs.send(JSON.stringify({ type: 'race_turn' }));
+    return;
+  }
+
+  // Singleplayer path â€” resolve locally
   gs = loadState();
   if (!gs.currentRace) { window.location.href = 'game.html'; return; }
 
   const result = resolveRaceTurn(gs);
-  gs = loadState(); // pick up mutations saved by resolveRaceTurn
+  gs = loadState();
 
   appendLog(result.log);
   updateMeters();
 
   if (result.finished) {
     raceFinished = true;
-    // Replace Turn button with Close
     const wrap = document.getElementById('turnBtnWrap');
     wrap.innerHTML = `<button class="btn btn-go" id="closeBtn" style="min-width:80px;padding:4px 14px">Close</button>`;
     document.getElementById('closeBtn').addEventListener('click', () => {
-      if (result.winner === 'player') {
-        resolveRaceWin(gs);
-      } else {
-        resolveRaceLoss(gs);
-      }
+      if (result.winner === 'player') resolveRaceWin(gs);
+      else                            resolveRaceLoss(gs);
       window.location.href = 'game.html';
     });
-
-    // Dim opponent arrow if they lost
-    if (result.winner === 'player') {
-      document.getElementById('oppArrow').style.opacity = '0.3';
-    }
+    if (result.winner === 'player') document.getElementById('oppArrow').style.opacity = '0.3';
   }
 });
 
-// Countdown log — fires once after a short delay for atmosphere
+// Countdown log â€” fires once after a short delay for atmosphere
 setTimeout(() => {
   appendLog([
     { text: 'The flagger is counting down...', style: 'neutral' },
     { text: 'Three...', style: 'neutral' },
     { text: 'Two...', style: 'neutral' },
     { text: 'One...', style: 'neutral' },
-    { text: 'His hand drops... GO! Mashing the gas...', style: 'neutral' },
+    { text: 'His hand drops... GO!', style: 'neutral' },
   ]);
 }, 400);
+
+// -- Multiplayer WS -----------------------------------------------------------
+function mpFinishRace(result, state) {
+  raceFinished = true;
+  gs = state;
+  saveState(gs);
+  appendLog(result.log);
+  updateMeters();
+  const wrap = document.getElementById('turnBtnWrap');
+  wrap.innerHTML = `<button class="btn btn-go" id="closeBtn" style="min-width:80px;padding:4px 14px">Close</button>`;
+  document.getElementById('closeBtn').addEventListener('click', () => {
+    window.location.href = 'game.html';
+  });
+  if (result.winner === 'player') document.getElementById('oppArrow').style.opacity = '0.3';
+}
+
+function mpHandleMsg(msg) {
+  switch (msg.type) {
+    case 'race_turn_result':
+      document.getElementById('turnBtn').disabled = false;
+      appendLog(msg.result.log);
+      gs = msg.state;
+      saveState(gs);
+      updateMeters();
+      if (msg.result.finished) mpFinishRace(msg.result, msg.state);
+      break;
+    case 'error':
+      appendLog([{ text: 'Server: ' + msg.msg, style: 'bad' }]);
+      document.getElementById('turnBtn').disabled = false;
+      break;
+  }
+}
+
+if (IS_MP) {
+  mpWs = new WebSocket(`ws://${location.hostname}:8080`);
+  mpWs.onopen = () => {
+    mpWs.send(JSON.stringify({ type: 'reconnect', code: MP_CODE, playerId: MP_ID }));
+  };
+  mpWs.onmessage = (e) => {
+    try { mpHandleMsg(JSON.parse(e.data)); } catch (err) { console.error('MP msg error:', err); }
+  };
+  mpWs.onerror = () => appendLog([{ text: 'WebSocket error.', style: 'bad' }]);
+  mpWs.onclose = () => appendLog([{ text: 'Disconnected from server.', style: 'bad' }]);
+}
 </script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 # Car Thief Online — Development Status
 
-_Last updated: 2026-05-15 (v0.3.0 / session 31)_
+_Last updated: 2026-05-15 (v0.3.0 / session 33)_
 
 ---
 
@@ -158,11 +158,11 @@ The game ends when a player flies to the airport. Highest score (cash minus debt
 | Room create/join/start | ✅ | Two players tested successfully |
 | Shared city map / location pools | ✅ | Host generates locations via `_generateCityLocations(startCityId)`; server distributes via `game_started` and `reconnected`; all clients render identical maps |
 | Shared day timer | ✅ | `nextDayAt` timestamp sent on `game_started`, `day_advanced`, `reconnected`; client shows `⏱ MM:SS` countdown in HUD; turns red at ≤30s; syncs on reconnect |
-| Chat + player roster | ✅ | `chat_message` broadcast; `get_players` → `players_list` response; player online/away state tracked |
-| crime.html wiring | ✅ | do_action, arrest, steal_success wired |
-| steal_claim conflict resolution | ⚠️ | pendingClaims exists in server but not fully tested |
-| race.html wiring | ❌ | race_challenge / race_turn not yet wired |
-| arrested.html wiring | ❌ | arrest_result navigation not confirmed |
+| Chat + player roster | ✅ | `chat_message` broadcast; `get_players` → `players_list` response; player online/away state tracked; inline MP panel in `game.html` (players list + chat log always visible below map) |
+| crime.html wiring | ✅ | do_action, arrest, steal_success, steal_claim, steal_abort, steal_ack/nack wired |
+| steal_claim conflict resolution | ✅ | claim sent on WS open; ack = proceed, nack = redirect with message |
+| race.html wiring | ✅ | race_turn wired; win/loss applied from server state; SP path unchanged |
+| arrested.html wiring | ✅ | arrest_result handler navigates to arrested.html |
 | store buy_item message | ❌ | |
 | sell_vehicle message | ❌ | |
 | End-to-end testing | ⚠️ | Room start works; gameplay sync not tested |
