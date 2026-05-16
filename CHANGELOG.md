@@ -2,7 +2,20 @@
 
 ---
 
-## Session 34 — 2026-05-16 — Re-join button; player count fix; portrait fix
+## Session 34b — 2026-05-16 — Re-join moved to play.html; [x] wired
+
+### Changed — `play.html`
+- `✕` title bar button now links to `index.html`
+- Re-join bar (`#rejoinBar`) added at bottom of Browse tab panel; visible on load when `localStorage` has `roomCode` + `playerId`
+
+### Changed — `index.html`
+- Removed Re-join button (moved to `play.html`)
+- Removed `.land-btn-rejoin` CSS
+- Cleaned up `updateAuthBar()` (removed rejoin check)
+
+---
+
+
 
 ### Changed — `server.js`
 - `player_joined` broadcast now includes `portraitSrc` and `profession` so lobby portraits render for newly joined players

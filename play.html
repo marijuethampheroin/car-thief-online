@@ -118,7 +118,7 @@ body::after, body::before { display: none !important; content: none !important; 
 <div class="window dialog">
   <div class="window-titlebar">
     Car Thief Online
-    <div class="win-btns"><button class="win-btn">✕</button></div>
+    <div class="win-btns"><button class="win-btn" onclick="window.location.href='index.html'">✕</button></div>
   </div>
 
   <!-- ── TABS ── -->
@@ -138,6 +138,9 @@ body::after, body::before { display: none !important; content: none !important; 
                oninput="this.value=this.value.toUpperCase()">
         <button class="btn" onclick="joinByCode()">Join</button>
         <span class="refresh-pip" id="refreshPip">↻ 5s</span>
+      </div>
+      <div id="rejoinBar" style="display:none; padding:6px 8px; border-top:1px solid var(--border-dark); background:rgba(0,0,0,0.15);">
+        <button class="btn" style="width:100%;color:#4caf50;border-color:#4caf50;" onclick="window.location.href='game.html'">● RE-JOIN ACTIVE GAME</button>
       </div>
     </div>
   </div>
@@ -568,6 +571,10 @@ window.addEventListener('load', () => {
 
   updatePortrait();
   buildCityMap('cityMapWrapCreate');
+
+  // Show Re-join bar if player has an active session
+  const hasSession = localStorage.getItem('roomCode') && localStorage.getItem('playerId');
+  if (hasSession) document.getElementById('rejoinBar').style.display = '';
 
   const params = new URLSearchParams(location.search);
   const join   = params.get('join');

@@ -143,16 +143,6 @@ body::after, body::before { display: none !important; content: none !important; 
   margin-top: -4px;
 }
 .land-btn-lb:hover { color: var(--text-main); }
-.land-btn-rejoin {
-  background: transparent;
-  color: #4caf50;
-  font-size: 12px;
-  padding: 6px 0;
-  border: 1px solid #4caf50;
-  margin-top: -4px;
-  display: none;
-}
-.land-btn-rejoin:hover { background: rgba(76,175,80,0.15); }
 
 /* Footer */
 .land-footer {
@@ -208,7 +198,6 @@ body::after, body::before { display: none !important; content: none !important; 
   <div class="land-actions">
     <button class="land-btn land-btn-mp" onclick="goMultiplayer()">▶ PLAY MULTIPLAYER</button>
     <button class="land-btn land-btn-solo" onclick="goSolo()">PLAY SOLO (Classic Mode)</button>
-    <button class="land-btn land-btn-rejoin" id="rejoinBtn" onclick="window.location.href='game.html'">● RE-JOIN ACTIVE GAME</button>
     <button class="land-btn land-btn-lb" onclick="window.location.href='leaderboard.html'">🏆 Leaderboard</button>
   </div>
 
@@ -226,16 +215,12 @@ function goAuth() {
 function updateAuthBar() {
   const name = sessionStorage.getItem('playerName');
   const token = sessionStorage.getItem('fbToken');
-  const bar = document.getElementById('authBar');
   if (token && name) {
     document.getElementById('authStatus').innerHTML =
       `Signed in as <span class="username">${esc(name)}</span>`;
     document.getElementById('authBtn').textContent = 'Sign Out';
     document.getElementById('authBtn').onclick = doSignOut;
   }
-  // Show Re-join button only if signed in AND have an active session
-  const hasSession = token && localStorage.getItem('roomCode') && localStorage.getItem('playerId');
-  document.getElementById('rejoinBtn').style.display = hasSession ? '' : 'none';
 }
 
 function doSignOut() {
