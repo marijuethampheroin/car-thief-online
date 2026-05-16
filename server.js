@@ -674,20 +674,22 @@ wss.on('connection', (ws, req) => {
     pushRoomList();
     console.log(`[${roomCode}] ${p?.name || playerId} disconnected — 60s grace period.`);
 
-    // Grace period: give player 60s to reconnect before removing them from the room
+    // Grace period: give player 60s to reconnect before removing them from the room.
+    // During an active game, never delete — just leave them as disconnected so they can rejoin.
     p._disconnectTimer = setTimeout(() => {
       const r = rooms.get(roomCode);
       if (!r) return;
       const pl = r.players.get(playerId);
       if (!pl || pl.connected) return; // reconnected in time
+      if (r.started) return;           // game in progress — keep the slot open indefinitely
       r.players.delete(playerId);
       r.playerStates.delete(playerId);
       broadcast(r, { type:'player_removed', playerId, reason:'timeout' });
       console.log(`[${roomCode}] ${p.name} removed after grace period.`);
     }, 60_000);
-    // If ALL players disconnected, clean up after 30 minutes
+    // If ALL players disconnected and game hasn't started, clean up after 30 minutes
     const allGone = [...room.players.values()].every(pl => !pl.connected);
-    if (allGone) {
+    if (allGone && !room.started) {
       setTimeout(() => {
         if (rooms.has(roomCode)) {
           stopDayTimer(rooms.get(roomCode));

@@ -40,6 +40,16 @@
 }
 .chat-input-row .text-input { flex: 1; font-size: 12px; }
 .chat-empty { padding: 20px; text-align: center; font-size: 11px; color: var(--text-dim); }
+.mp-players { display: flex; flex-direction: column; gap: 2px; padding: 4px 6px; }
+.mp-player-entry {
+  display: flex; align-items: center; gap: 5px;
+  padding: 3px 4px; background: rgba(0,0,0,0.2);
+  border: 1px solid var(--border-dark); font-size: 11px;
+}
+.mp-player-entry img { width: 22px; height: 28px; object-fit: cover; object-position: top; image-rendering: pixelated; flex-shrink: 0; }
+.mp-player-name { font-family: 'Oswald', sans-serif; font-size: 12px; color: var(--text-light); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mp-player-status { font-size: 10px; color: var(--text-dim); }
+.mp-status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-left: auto; }
 </style>
 </head>
 <body class="main-screen">
@@ -2108,6 +2118,7 @@ function mpHandleMsg(msg) {
       // Seed the player list from the server's response
       if (msg.players && msg.players.length) {
         _chatRoomPlayers = msg.players.map(p => ({ ...p, connected: p.connected !== false }));
+        renderChatPlayers();
       }
       break;
 
@@ -2120,10 +2131,17 @@ function mpHandleMsg(msg) {
       break;
 
     case 'player_disconnected':
-      logMsg(`A player disconnected.`);
       { const dp = _chatRoomPlayers.find(p => p.id === msg.playerId);
-        if (dp) { dp.connected = false; }
-        if (document.getElementById('chatOverlay').style.display !== 'none') renderChatPlayers(); }
+        if (dp) dp.connected = false;
+        logMsg(`${dp ? dp.name : 'A player'} disconnected.`);
+        renderChatPlayers(); }
+      break;
+
+    case 'player_reconnected':
+      { const rp = _chatRoomPlayers.find(p => p.id === msg.playerId);
+        if (rp) rp.connected = true;
+        logMsg(`${rp ? rp.name : 'A player'} reconnected.`);
+        renderChatPlayers(); }
       break;
 
     case 'game_over': {
@@ -2174,7 +2192,7 @@ function mpHandleMsg(msg) {
         portraitSrc: (p.id === MP_ID && selfEntry?.portraitSrc) ? selfEntry.portraitSrc : (p.portraitSrc || ''),
         connected:   p.connected !== false,
       }));
-      if (document.getElementById('chatOverlay').style.display !== 'none') renderChatPlayers();
+      renderChatPlayers(); // updates both inline list and modal if open
       break;
     }
   }

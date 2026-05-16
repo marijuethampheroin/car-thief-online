@@ -73,16 +73,20 @@
 
 ---
 
+## Session 30 — 2026-05-16 — Persistent Rooms + Player List
+
+### Fixed — `server.js`
+- Grace period timer: if `room.started`, skip deletion entirely — disconnected players keep their slot and state for the full duration of the game
+- All-gone cleanup: 30-minute room deletion now only triggers if `!room.started`; started games persist until the win condition fires
+
+### Fixed — `game.html`
+- Added `player_reconnected` message handler (was missing); both `player_disconnected` and `player_reconnected` now call `renderChatPlayers()` unconditionally and log the player's name
+- `renderChatPlayers()` now always called after `_chatRoomPlayers` is seeded in `reconnected`, and in `players_list` handler (modal-open guard removed — inline list needs updating regardless)
+- Added missing CSS for `.mp-players`, `.mp-player-entry`, `.mp-player-name`, `.mp-player-status`, `.mp-status-dot` — inline player list next to chat was unstyled and never populated
+
+---
+
 ## Session 29 — 2026-05-15 — Shared Map Locations + Auth Token Refresh
-
-### Fixed — `play.html`
-- Added Firebase app-compat + auth-compat SDK to `<head>` and initialized Firebase
-- `connectWs()`: replaced stale `sessionStorage.getItem('fbToken')` with `firebase.auth().currentUser.getIdToken()` — auto-refreshes expired tokens (Firebase ID tokens expire after 1 hour); falls back to sessionStorage value if `currentUser` is null; updates sessionStorage cache after refresh
-
-### Fixed — `play.html`, `server.js`, `game.html`
-**Problem:** Each client called `_generateCityLocations()` independently, producing different randomized icon positions despite matching location pool IDs.
-
-**Solution:** Host generates locations once on `start_game`; server distributes them to all players; clients use server-provided locations.
 
 - `play.html` `doCreate()`: saves `startCityId` to `sessionStorage` so it's available when the game starts
 - `play.html` `startGame()`: replaced static `LOC_DEFS` constant with a live call to `_generateCityLocations(startCityId)` — host now generates the authoritative location list
