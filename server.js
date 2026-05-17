@@ -159,9 +159,14 @@ function startDayTimer(room) {
         send(p.ws, { type:'day_advanced', state, msg, day: room.day, nextDayAt: room.nextDayAt });
       }
     }
-    // Refresh shared vehicle pools
+    // Refresh per-player vehicle pools, then send each player their updated state
     refreshRoomPools(room);
-    broadcast(room, { type:'pool_update', locationPools: room.locationPools });
+    for (const [id, state] of room.playerStates) {
+      const p = room.players.get(id);
+      if (p && p.ws && p.ws.readyState === 1) {
+        send(p.ws, { type:'pool_update', locationPools: state.locationPools });
+      }
+    }
     console.log(`[${room.code}] Day ${room.day} began.`);
   }, DAY_DURATION);
 }
@@ -218,22 +223,28 @@ function _generatePool(locId, locType, count) {
 }
 
 function initRoomPools(room, locDefs) {
-  room.locationPools = {};
-  for (const loc of locDefs) {
-    room.locationPools[loc.id] = _generatePool(loc.id, loc.type);
-  }
   room.locDefs = locDefs;
+  // Each player gets their own independent location pools (per-city model)
+  for (const [id, state] of room.playerStates) {
+    state.locationPools = {};
+    for (const loc of locDefs) {
+      state.locationPools[loc.id] = _generatePool(loc.id, loc.type);
+    }
+  }
 }
 
 function refreshRoomPools(room) {
   if (!room.locDefs) return;
-  for (const loc of room.locDefs) {
-    let pool = room.locationPools[loc.id] || [];
-    pool = pool.filter(() => Math.random() > 0.20);
-    if (pool.length < 2) {
-      pool.push(..._generatePool(loc.id, loc.type, 2 - pool.length + Math.floor(Math.random() * 2)));
+  for (const [id, state] of room.playerStates) {
+    if (!state.locationPools) state.locationPools = {};
+    for (const loc of room.locDefs) {
+      let pool = state.locationPools[loc.id] || [];
+      pool = pool.filter(() => Math.random() > 0.20);
+      if (pool.length < 2) {
+        pool.push(..._generatePool(loc.id, loc.type, 2 - pool.length + Math.floor(Math.random() * 2)));
+      }
+      state.locationPools[loc.id] = pool;
     }
-    room.locationPools[loc.id] = pool;
   }
 }
 
@@ -303,26 +314,23 @@ function handleMessage(ws, playerId, roomCode, data) {
     case 'steal_claim': {
       if (!room || !room.started) return;
       const { locId, uid } = data;
-      const pool = room.locationPools[locId];
+      const state = room.playerStates.get(playerId);
+      const pool = state && state.locationPools && state.locationPools[locId];
       if (!pool) {
-        // Location not tracked on server — player is in a city the server hasn't
-        // seen yet (e.g. they flew there after game start). No shared pool conflict
-        // is possible for this location, so ack immediately.
         send(ws, { type:'steal_ack', locId, uid });
         break;
       }
       const idx = pool.findIndex(v => v.uid === uid);
       if (idx === -1) {
-        // Vehicle is either already claimed (pending) or gone — nack silently
         send(ws, { type:'steal_nack', locId, uid });
         return;
       }
-      // Lock vehicle: remove from pool into pendingClaims for duration of steal attempt
+      // Lock vehicle: remove from pool into pendingClaims
       const [vehicle] = pool.splice(idx, 1);
       if (!room.pendingClaims) room.pendingClaims = {};
       room.pendingClaims[uid] = { locId, vehicle, playerId };
       send(ws, { type:'steal_ack', locId, uid });
-      broadcast(room, { type:'pool_update', locationPools: room.locationPools });
+      send(ws, { type:'pool_update', locationPools: state.locationPools });
       break;
     }
 
@@ -356,7 +364,7 @@ function handleMessage(ws, playerId, roomCode, data) {
     }
 
     // ── steal_abort ─────────────────────────────────────────────────────────
-    // Player was arrested or fled — return the vehicle to the shared pool.
+    // Player was arrested or fled — return the vehicle to their own pool.
     case 'steal_abort': {
       if (!room || !room.started) return;
       const { uid } = data;
@@ -364,10 +372,17 @@ function handleMessage(ws, playerId, roomCode, data) {
       const claim = room.pendingClaims[uid];
       if (!claim) break;
       delete room.pendingClaims[uid];
-      // Return vehicle to its location pool
-      if (!room.locationPools[claim.locId]) room.locationPools[claim.locId] = [];
-      room.locationPools[claim.locId].push(claim.vehicle);
-      broadcast(room, { type:'pool_update', locationPools: room.locationPools });
+      // Return vehicle to the claiming player's own location pool
+      const abortState = room.playerStates.get(claim.playerId);
+      if (abortState) {
+        if (!abortState.locationPools) abortState.locationPools = {};
+        if (!abortState.locationPools[claim.locId]) abortState.locationPools[claim.locId] = [];
+        abortState.locationPools[claim.locId].push(claim.vehicle);
+        const abortP = room.players.get(claim.playerId);
+        if (abortP && abortP.ws && abortP.ws.readyState === 1) {
+          send(abortP.ws, { type:'pool_update', locationPools: abortState.locationPools });
+        }
+      }
       break;
     }
 

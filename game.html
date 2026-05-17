@@ -1717,7 +1717,7 @@ function renderMapIcons() {
   // Remove old icons
   mw.querySelectorAll('.map-icon').forEach(el => el.remove());
 
-  const mapIcons = (IS_MP && gs.mpLocDefs) ? gs.mpLocDefs : getCityLocations(gs);
+  const mapIcons = getCityLocations(gs);
 
   // Stealable location defs for vehicle pool init
   const stealableTypes = ['highway','residential','busy','racing'];
