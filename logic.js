@@ -484,6 +484,58 @@ function _shuffle(arr) {
   return a;
 }
 
+function _randInt(min, max) { return min + Math.floor(Math.random() * (max - min + 1)); }
+
+const MAP_SLOTS = [
+  {x:12,y:12},{x:25,y:12},{x:40,y:12},{x:55,y:12},{x:70,y:12},{x:85,y:12},
+  {x:12,y:26},{x:25,y:26},{x:40,y:26},{x:55,y:26},{x:70,y:26},{x:85,y:26},
+  {x:12,y:40},{x:25,y:40},{x:40,y:40},{x:55,y:40},{x:70,y:40},{x:85,y:40},
+  {x:12,y:54},{x:25,y:54},{x:40,y:54},{x:55,y:54},{x:70,y:54},{x:85,y:54},
+  {x:12,y:68},{x:25,y:68},{x:40,y:68},{x:55,y:68},{x:70,y:68},{x:85,y:68},
+  {x:12,y:82},{x:25,y:82},{x:40,y:82},{x:55,y:82},{x:70,y:82},{x:85,y:82},
+];
+
+const CITY_LOCATION_TEMPLATES = {
+  highway:    { min:1, max:3, fixed:false, si:[1,1], label:'Highway',        desc:'Hijack a vehicle from a driver (confrontation).' },
+  residential:{ min:2, max:5, fixed:false, si:[1,4], label:'Residential Area',desc:'Steal a parked vehicle quietly.' },
+  busy:       { min:1, max:4, fixed:false, si:[1,3], label:'Busy Street',     desc:'Steal a parked vehicle. High risk — lots of witnesses.' },
+  racing:     { min:0, max:2, fixed:false, si:[1,2], label:'Racing Area',     desc:'Steal a vehicle during or after a race event.' },
+  shop:       { min:1, max:1, fixed:true,  si:[1,6], label:'Shop',            desc:'Buy equipment and tools.' },
+  dealer:     { min:1, max:1, fixed:true,  si:[1,0], label:'Car Park',        desc:'Sell stolen vehicles.' },
+  bank:       { min:1, max:1, fixed:true,  si:[1,5], label:'Bank',            desc:'Rob the bank.' },
+  airport:    { min:1, max:1, fixed:true,  si:[2,5], label:'Airport',         desc:'Fly to another city or end the game.' },
+  dealer_npc: { min:0, max:1, fixed:false, si:[2,6], label:'Drug Dealer',     desc:'Buy drug packages from a street contact.' },
+};
+
+function _generateCityLocations(cityId) {
+  const stealableTypes = ['highway','residential','busy','racing'];
+  const slots = _shuffle(MAP_SLOTS.slice());
+  let slotIdx = 0;
+  const locs = [];
+  for (const [type, tpl] of Object.entries(CITY_LOCATION_TEMPLATES)) {
+    const count = tpl.fixed ? 1 : _randInt(tpl.min, tpl.max);
+    for (let i = 0; i < count; i++) {
+      const pos = slots[slotIdx % slots.length];
+      slotIdx++;
+      locs.push({
+        id:       stealableTypes.includes(type) ? `${type}_${i}` : null,
+        type,
+        x:        pos.x,
+        y:        pos.y,
+        si:       tpl.si,
+        label:    tpl.label,
+        desc:     tpl.desc,
+        fixed:    !!tpl.fixed,
+        lifespan: tpl.fixed ? null : _randInt(3, 7),
+        age:      0,
+        dealRisk: tpl.fixed ? 0 : _randInt(5, 35),
+        hoeRisk:  tpl.fixed ? 0 : _randInt(8, 40),
+      });
+    }
+  }
+  return locs;
+}
+
 // ---------------------------------------------------------------------------
 // EXPORTS
 // ---------------------------------------------------------------------------
@@ -492,4 +544,5 @@ module.exports = {
   applyArrestPenalties,
   initRace, resolveRaceTurn, resolveRaceWin, resolveRaceLoss,
   makeInventoryItem, getItem, initShopStock, ITEMS_DATA,
+  _generateCityLocations,
 };

@@ -390,6 +390,7 @@ function handleMsg(msg) {
       msg.state.locationPools = msg.locationPools;
       sessionStorage.setItem('gameState',     JSON.stringify(msg.state));
       sessionStorage.setItem('locationPools', JSON.stringify(msg.locationPools));
+      sessionStorage.setItem('cityLayouts',   JSON.stringify(msg.cityLayouts || {}));
       sessionStorage.setItem('playerName',    msg.state.playerName);
       sessionStorage.setItem('portraitSrc',   msg.state.portraitSrc);
       sessionStorage.setItem('profession',    msg.state.profession);

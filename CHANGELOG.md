@@ -2,6 +2,55 @@
 
 ---
 
+## Session 36 — 2026-05-17 — Shared city layouts
+
+### Fixed — `logic.js`
+- Added `_randInt`, `MAP_SLOTS`, `CITY_LOCATION_TEMPLATES`, `_generateCityLocations` (already present from previous session); exported `_generateCityLocations`
+
+### Fixed — `server.js`
+- Imported `_generateCityLocations` from `logic.js`
+- `create_room`: added `cityLayouts: {}` to room structure
+- Added `getOrCreateCityLayout(room, cityId)` helper — generates and caches per-city layouts so all players share identical icon positions
+- `start_game`: generates layout for each player's starting city before sending; includes `cityLayouts: room.cityLayouts` in `game_started`
+- `city_travel`: calls `getOrCreateCityLayout` for destination city; includes `cityLayouts: room.cityLayouts` in `state_update` response
+- `reconnect`: includes `cityLayouts: room.cityLayouts` in `reconnected` response
+
+### Fixed — `lobby.html`
+- `game_started` handler: saves `msg.cityLayouts` to `sessionStorage` so `game.html` can apply on first load
+
+### Fixed — `game.html`
+- MP init block: reads `cityLayouts` from sessionStorage and writes into `gs.cities` before first `renderMapIcons()`
+- Added `applyServerCityLayouts(cityLayouts)` helper — overwrites `gs.cities` entries from server data and updates sessionStorage cache
+- `day_advanced`, `state_update`, `reconnected` handlers: call `applyServerCityLayouts(msg.cityLayouts)` so server layouts are always applied before `renderMapIcons()`
+
+---
+
+## Session 35 — 2026-05-17 — MP city system overhaul
+
+### Fixed — `lobby.html`
+- `start_game` message now includes `startCityId: getCharacter().startCityId`
+
+### Fixed — `server.js`
+- `create_room` + `join_room`: player record now stores `startCityId`
+- `start_game`: host city resolved from `room.hostId`; guests default to host's city; `state.currentCity` set per player
+- `initRoomPools`: now builds per-player pools into each `state.locationPools` instead of one shared `room.locationPools`
+- `refreshRoomPools`: refreshes each player's own state pools individually
+- `startDayTimer`: sends each player their own `pool_update` after daily refresh
+- `steal_claim`: reads/writes player's own `state.locationPools`; sends `pool_update` only to that player
+- `steal_abort`: returns vehicle to claiming player's own pool
+- `game_started` send loop: sends `pState.locationPools` per player instead of shared pool
+- `reconnect` response: sends `state.locationPools` instead of empty `room.locationPools`
+- Added `city_travel` message handler: updates `state.currentCity` on server, generates fresh pools for new city, returns `state_update`
+
+### Fixed — `game.html`
+- `renderMapIcons`: removed `IS_MP && gs.mpLocDefs` branch — always uses `getCityLocations(gs)`
+- `reconnected` handler: preserves `gs.currentCity` and `gs.cities` through server state overwrite; `saveState` moved to after `renderMapIcons` so cities are included; sends `city_travel` to sync city with server
+- `state_update` handler: preserves `gs.cities` through server state overwrite
+- `day_advanced` handler: preserves `gs.cities` through server state overwrite
+- Added `saveState(gs)` after initial `renderMapIcons()` call in MP to persist generated city locations
+
+---
+
 ## Session 34d — 2026-05-16 — classic_crime.html; solo routing fixes
 
 ### Changed — `classic_crime.html` (new, copied from crime.html)

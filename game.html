@@ -1782,6 +1782,17 @@ if (IS_MP) {
   const _mpLocs = sessionStorage.getItem('locDefs');
   if (_mpLocs) { try { gs.mpLocDefs = JSON.parse(_mpLocs); } catch(e){} }
 
+  const _mpLayouts = sessionStorage.getItem('cityLayouts');
+  if (_mpLayouts) {
+    try {
+      const layouts = JSON.parse(_mpLayouts);
+      if (!gs.cities) gs.cities = {};
+      for (const [cityId, locs] of Object.entries(layouts)) {
+        gs.cities[cityId] = { locations: locs };
+      }
+    } catch(e) {}
+  }
+
   const _mpNextDayAt = sessionStorage.getItem('nextDayAt');
   if (_mpNextDayAt) { try { startDayCountdown(parseInt(_mpNextDayAt, 10)); } catch(e){} }
 }
@@ -2056,6 +2067,17 @@ document.getElementById('leftPanel').addEventListener('click', e => {
 //   steal_nack    — our steal_claim was rejected (car already gone)
 //   game_over     — host ended the game; show final scores
 
+// Apply server-authoritative city layouts to gs.cities.
+// Called whenever the server sends cityLayouts so all players share identical map positions.
+function applyServerCityLayouts(cityLayouts) {
+  if (!cityLayouts) return;
+  if (!gs.cities) gs.cities = {};
+  for (const [cityId, locs] of Object.entries(cityLayouts)) {
+    gs.cities[cityId] = { locations: locs };
+  }
+  sessionStorage.setItem('cityLayouts', JSON.stringify(cityLayouts));
+}
+
 function mpHandleMsg(msg) {
   switch (msg.type) {
 
@@ -2063,6 +2085,7 @@ function mpHandleMsg(msg) {
       const _cities = gs.cities;
       gs = msg.state;
       if (_cities) gs.cities = _cities;
+      applyServerCityLayouts(msg.cityLayouts);
       saveState(gs);
       renderHUD();
       renderMapIcons();
@@ -2102,6 +2125,7 @@ function mpHandleMsg(msg) {
       const _cities = gs.cities;
       gs = msg.state;
       if (_cities) gs.cities = _cities;
+      applyServerCityLayouts(msg.cityLayouts);
       renderHUD();
       renderMapIcons();
       saveState(gs);
@@ -2121,6 +2145,7 @@ function mpHandleMsg(msg) {
       if (msg.locDefs) gs.mpLocDefs = msg.locDefs;
       if (localCity)   gs.currentCity = localCity;
       if (localCities) gs.cities = localCities;
+      applyServerCityLayouts(msg.cityLayouts);
       renderHUD();
       renderMapIcons();
       saveState(gs);

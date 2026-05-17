@@ -17,6 +17,7 @@ const path   = require('path');
 const { WebSocketServer } = require('ws');
 const crypto = require('crypto');
 const logic  = require('./logic.js');
+const { _generateCityLocations } = logic;
 const admin  = require('firebase-admin');
 const svcAcct = process.env.SERVICE_ACCOUNT_KEY
   ? JSON.parse(process.env.SERVICE_ACCOUNT_KEY)
@@ -233,6 +234,15 @@ function initRoomPools(room, locDefs) {
   }
 }
 
+// Generate (or return cached) city layout for a room.
+// All players in the room share the same layout for each city.
+function getOrCreateCityLayout(room, cityId) {
+  if (!room.cityLayouts[cityId]) {
+    room.cityLayouts[cityId] = _generateCityLocations(cityId);
+  }
+  return room.cityLayouts[cityId];
+}
+
 function refreshRoomPools(room) {
   if (!room.locDefs) return;
   for (const [id, state] of room.playerStates) {
@@ -276,6 +286,11 @@ function handleMessage(ws, playerId, roomCode, data) {
       const locDefs = data.locDefs || [];
       initRoomPools(room, locDefs);
       startDayTimer(room);
+      // Ensure a layout exists for each player's starting city
+      for (const [id, p] of room.players) {
+        getOrCreateCityLayout(room, p.startCityId || 'las_vegas');
+      }
+
       // Send each player their own state + their own pools
       for (const [id, p] of room.players) {
         const pState = room.playerStates.get(id);
@@ -284,6 +299,7 @@ function handleMessage(ws, playerId, roomCode, data) {
           state: pState,
           locationPools: pState.locationPools,
           locDefs: room.locDefs,
+          cityLayouts: room.cityLayouts,
           players: playerList(room),
           nextDayAt: room.nextDayAt,
         });
@@ -346,6 +362,7 @@ function handleMessage(ws, playerId, roomCode, data) {
       const state = room.playerStates.get(playerId);
       if (state && data.cityId) {
         state.currentCity = data.cityId;
+        getOrCreateCityLayout(room, data.cityId);
         // Init a fresh pool for this city if the player hasn't been here before
         if (!state.locationPools) state.locationPools = {};
         if (room.locDefs) {
@@ -355,7 +372,7 @@ function handleMessage(ws, playerId, roomCode, data) {
             }
           }
         }
-        send(ws, { type:'state_update', state });
+        send(ws, { type:'state_update', state, cityLayouts: room.cityLayouts });
       }
       break;
     }
@@ -642,6 +659,7 @@ wss.on('connection', (ws, req) => {
         players:      new Map(),
         playerStates: new Map(),
         locationPools: {},
+        cityLayouts:   {},
         pendingRace: null,
       };
       room.roomName = (data.roomName || 'Unnamed Room').trim().slice(0, 20);
@@ -697,7 +715,7 @@ wss.on('connection', (ws, req) => {
       p.ws = ws; p.connected = true;
       if (p._disconnectTimer) { clearTimeout(p._disconnectTimer); p._disconnectTimer = null; }
       const state = room.playerStates.get(playerId);
-      send(ws, { type:'reconnected', state, locationPools: state.locationPools, locDefs: room.locDefs, players: playerList(room), nextDayAt: room.nextDayAt });
+      send(ws, { type:'reconnected', state, locationPools: state.locationPools, locDefs: room.locDefs, cityLayouts: room.cityLayouts, players: playerList(room), nextDayAt: room.nextDayAt });
       broadcast(room, { type:'player_reconnected', playerId });
       console.log(`[${roomCode}] ${p.name} reconnected.`);
       return;
