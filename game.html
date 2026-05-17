@@ -1786,9 +1786,9 @@ if (IS_MP) {
   if (_mpNextDayAt) { try { startDayCountdown(parseInt(_mpNextDayAt, 10)); } catch(e){} }
 }
 renderMapIcons();
+if (IS_MP) saveState(gs); // persist generated city locations so they survive reconnect
 
 // ── LEFT PANEL — Reset to character view on empty click ───────────────────────
-// Clicking empty map space or non-interactive UI areas resets the context panel.
 // ── BACKPACK ITEM CLICK ────────────────────────────────────────────────────────
 // Event delegation on the left panel — handles .bp-slot clicks after renderCharView().
 document.getElementById('leftPanel').addEventListener('click', e => {
