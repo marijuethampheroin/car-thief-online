@@ -174,7 +174,7 @@ body.arrested-screen {
 
   <!-- Footer -->
   <div class="arrested-footer">
-    <button class="btn btn-go" onclick="window.location.href='game.html'">Back to the City</button>
+    <button class="btn btn-go" onclick="window.location.href='main.html'">Back to the City</button>
   </div>
 
 </div>
@@ -182,7 +182,7 @@ body.arrested-screen {
 'use strict';
 
 const gs = loadState();
-if (!gs) { window.location.href = 'game.html'; }
+if (!gs) { window.location.href = 'main.html'; }
 
 const penalty = JSON.parse(sessionStorage.getItem('arrestResult') || '{}');
 sessionStorage.removeItem('arrestResult');
