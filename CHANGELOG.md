@@ -2,7 +2,23 @@
 
 ---
 
-## Session 34c — 2026-05-16 — Shared character bar in play.html
+## Session 34d — 2026-05-16 — classic_crime.html; solo routing fixes
+
+### Changed — `classic_crime.html` (new, copied from crime.html)
+- Stripped all MP detection vars (`MP_ID`, `MP_CODE`, `IS_MP`, `mpWs`, `mpPending` flag kept as stub)
+- Removed entire MP WebSocket block (`mpHandleMsg`, `if(IS_MP){...}`)
+- Stripped `IS_MP` branches from `endScene` and `doTurn` — solo logic only
+- All `game.html` redirects changed to `main.html`
+
+### Changed — `main.html`
+- All `crime.html` navigations replaced with `classic_crime.html`
+
+### Changed — `classic.html`
+- `startGame()` now routes to `main.html` instead of `game.html`
+
+---
+
+
 
 ### Changed — `play.html`
 - Added persistent `#charBar` between titlebar and tabs: portrait thumb (52×66), ‹/› nav, Name input, Profession buttons — visible on Browse and Create tabs, hidden when room panel shows

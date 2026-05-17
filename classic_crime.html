@@ -1,0 +1,552 @@
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Crime Scene - Car Thief Online</title>
+<link rel="stylesheet" href="styles.css">
+<script src="game.js"></script>
+<style>
+body.crime-screen { background:#1a0e00; align-items:center; justify-content:center; padding:0; }
+.crime-window {
+  width:683px; height:511px; display:flex; flex-direction:column;
+  background-image:url("Graphics/UI_elements/background_crime.bmp");
+  background-size:cover; background-position:center; overflow:hidden;
+}
+.crime-body { flex:1; min-height:0; display:flex; }
+.crime-center {
+  flex:1; display:flex; flex-direction:column;
+  border-left:1px solid var(--border-dark); border-right:1px solid var(--border-dark); min-width:0;
+}
+.scene-strip { height:105px; flex-shrink:0; overflow:hidden; border-bottom:1px solid var(--border-dark); }
+.scene-strip img { width:100%; height:100%; object-fit:cover; image-rendering:pixelated; }
+.crime-log {
+  flex:1; min-height:0; overflow-y:auto; padding:6px 8px;
+  font-size:11px; line-height:1.55; background:var(--bg-parchment); color:var(--text-main);
+}
+.crime-log p { margin-bottom:2px; }
+.crime-log .sys  { color:#7a5010; }
+.crime-log .bad  { color:#c03000; font-weight:bold; }
+.crime-log .good { color:#2a6a1a; }
+.action-bar {
+  flex-shrink:0; border-top:1px solid var(--border-dark);
+  background:var(--bg-parchment); padding:2px 5px 3px;
+}
+.act-row {
+  display:flex; align-items:center; gap:4px;
+  padding:0px 3px; cursor:pointer; border-radius:2px; height:22px;
+}
+.act-row:hover { background:rgba(180,120,40,0.15); }
+.act-row.selected { background:rgba(180,120,40,0.3); }
+.act-row.unavailable { opacity:0.4; cursor:default; pointer-events:none; }
+.act-radio {
+  width:10px; height:10px; border-radius:50%; flex-shrink:0;
+  border:1px solid var(--border-dark); background:var(--bg-dark);
+}
+.act-row.selected .act-radio { background:var(--accent); border-color:var(--accent-bright); }
+.act-img {
+  width:30px; height:20px; flex-shrink:0;
+  background-image:url("Graphics/UI_elements/activities.bmp");
+  background-repeat:no-repeat; image-rendering:pixelated;
+  background-size:1400% 100%;
+}
+.act-lbl {
+  font-family:"Oswald",sans-serif; font-size:10px; color:var(--text-main);
+  line-height:1.2;
+}
+.crime-right { width:110px; flex-shrink:0; display:flex; flex-direction:column; overflow-y:auto; }
+.crime-right .r-section { border-bottom:1px solid var(--border-dark); padding:2px 3px; }
+.crime-right .r-lbl { font-family:"Oswald",sans-serif; font-size:10px; color:var(--text-light); margin-bottom:2px; }
+.crime-right .rp-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:2px; }
+.crime-right .rp-slot {
+  aspect-ratio:1; background:var(--bg-dark); border:1px solid var(--border-dark);
+  overflow:hidden; display:flex; align-items:center; justify-content:center; cursor:pointer;
+}
+.crime-right .rp-slot:hover { border-color:var(--accent); }
+.crime-right .rp-slot img { width:100%; height:100%; object-fit:cover; image-rendering:pixelated; }
+.crime-right .rp-slot.inactive { opacity:0.4; cursor:default; pointer-events:none; }
+#policeSection { display:none; }
+.crime-bottom {
+  background:linear-gradient(180deg,#3a1e00 0%,#2e1800 100%);
+  border-top:1px solid var(--border-dark); padding:3px 8px;
+  display:flex; align-items:center; gap:8px;
+  font-family:"Oswald",sans-serif; font-size:11px; color:var(--text-light);
+}
+.crime-bottom .meter-track { width:140px; flex:none; }
+.turn-btn {
+  font-family:"Oswald",sans-serif; font-size:13px; font-weight:600;
+  padding:5px 22px; background:var(--bg-panel); color:#ffd080;
+  border:1px solid var(--border-dark); border-top-color:#c0904a; border-left-color:#c0904a;
+  cursor:pointer; box-shadow:var(--raised); letter-spacing:0.5px;
+}
+.turn-btn:hover { background:var(--accent); }
+.turn-btn:active { box-shadow:var(--inset); transform:translateY(1px); }
+.turn-btn:disabled { opacity:0.5; cursor:default; }
+</style>
+<link rel="manifest" href="/manifest.json">
+<script>if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');</script></head>
+<body class="crime-screen">
+<div class="window crime-window">
+  <div class="crime-body">
+    <div class="left-panel" id="crimeLeft"></div>
+    <div class="crime-center">
+      <div class="scene-strip">
+        <img id="sceneImg" src="Graphics/UI_elements/group_house.bmp" onerror="this.style.opacity=0.15">
+      </div>
+      <div class="crime-log" id="crimeLog">
+        <p class="sys">You arrive at the location. Scout for a target vehicle.</p>
+      </div>
+      <div class="action-bar" id="actionBar"></div>
+    </div>
+    <div class="crime-right">
+      <div class="r-section" id="policeSection">
+        <div class="r-lbl">Police Patrol</div>
+        <div class="rp-grid" id="policeSlots"></div>
+      </div>
+      <div class="r-section panel">
+        <div class="r-lbl">Crime Target</div>
+        <div class="rp-grid" id="crimeTargetSlots"></div>
+      </div>
+      <div class="r-section panel">
+        <div class="r-lbl">Your Target</div>
+        <div class="rp-grid" id="yourTargetSlots"></div>
+      </div>
+      <div class="r-section panel">
+        <div class="r-lbl">Active Team</div>
+        <div class="rp-grid" id="teamSlots"></div>
+      </div>
+      <div class="r-section panel">
+        <div class="r-lbl">Reserve</div>
+        <div class="rp-grid" id="reserveSlots"></div>
+      </div>
+    </div>
+  </div>
+  <div class="crime-bottom">
+    <span>Police Readiness</span>
+    <div class="meter-track"><div class="meter-fill" id="policeFill" style="width:0%"></div></div>
+    <span id="policeVal" style="font-size:10px;color:var(--text-dim)">30</span>
+    <button class="help">?</button>
+    <div style="flex:1"></div>
+    <button class="btn btn-sm" onclick="leaveScene()">Leave Scene</button>
+    <button class="turn-btn" id="turnBtn" onclick="doTurn()">Turn</button>
+  </div>
+</div>
+
+<script>
+// ── SOLO MODE ─────────────────────────────────────────────────────────────────
+let mpPending = false;
+
+let turnNum=1,sceneOver=false,selectedAct=null;
+let gs=loadState();
+if(!gs)window.location.href="main.html";
+let policeLevel = Math.min(100, (gs.policeReadiness || 0) + 20);
+
+// ── SCENE STATE ───────────────────────────────────────────────────────────────
+let sceneState = {
+  approached: false, driverRemoved: false, escalationFailed: false,
+  doorOpen: false, alarmActive: false, alarmDisabled: false,
+  engineStarted: false, gpsChecked: false, gpsSkipped: false,
+  ownerDistracted: false, gunShown: false,
+  // bank robbery
+  teller_approached: false, teller_complied: false, alarm_triggered: false,
+  teller_cash_taken: false, manager_found: false, manager_complied: false,
+  vault_open: false,
+  bags_remaining: 2 + Math.floor(Math.random() * 3),
+  bags_taken: 0,
+};
+
+// ── ACTIVE TEAM CHECK ─────────────────────────────────────────────────────────
+(function checkActiveTeam() {
+  const activeHired = (gs.contacts || []).filter(
+    c => c.status === 'hired' && c.assignedLocation !== 'hideout'
+  );
+  if (gs.playerAtHideout && activeHired.length === 0) {
+    sessionStorage.setItem('crimeBlockMsg', 'No active team members — bring someone out of the hideout first.');
+    window.location.href = 'main.html';
+  }
+})();
+gs.crimesCommitted = (gs.crimesCommitted || 0) + 1;
+saveState(gs);
+const tgtLoc=sessionStorage.getItem("targetLocation");
+const loc=tgtLoc?JSON.parse(tgtLoc):{type:"residential",label:"Residential Area",method:"steal"};
+const vehData=loc.vehicle||{name:"Unknown Vehicle",body:"Sedan",seats:4,price:5000,speed:60,lockDef:20,elecDef:20,condition:50,imgIdx:1};
+const vehicle={lockDef:vehData.lockDef, elecDef:vehData.elecDef, body:(vehData.body||'').toLowerCase()};
+const sceneImgs={
+  highway:"Graphics/UI_elements/HIGHWAY.BMP",
+  residential:"Graphics/UI_elements/group_house.bmp",
+  busy:"Graphics/UI_elements/group_road.bmp",
+  racing:"Graphics/UI_elements/group_ground.bmp",
+  bank:"Graphics/UI_elements/group_office.bmp"
+};
+document.getElementById("sceneImg").src=sceneImgs[loc.type]||sceneImgs.residential;
+function actImg(idx){return `background-position:calc(${idx}/13*100%) 0`;}
+const actDefs={
+  case_the_area:        {label:"Case the Area",              bi:3},
+  lockpick_door:        {label:"Pick the Door Lock",         bi:1},
+  slim_jim:             {label:"Use Slim Jim Kit",            bi:1},
+  door_opener:          {label:"Use Pump Wedge",             bi:1},
+  smash_window:         {label:"Break the Window",           bi:1},
+  hotwire_engine:       {label:"Hot-wire the Ignition",      bi:4},
+  pick_ignition:        {label:"Pick the Ignition Lock",     bi:1},
+  disable_alarm:        {label:"Disable Alarm",              bi:4},
+  check_gps:            {label:"Check if GPS is Installed",  bi:4},
+  skip_gps:             {label:"Skip GPS Check",             bi:0},
+  get_in_vehicle:       {label:"Get in the Vehicle",         bi:9},
+  approach_driver:      {label:"Approach the Vehicle",       bi:11},
+  ask_to_go_out:        {label:"Ask to Go Out",              bi:2},
+  show_your_gun:        {label:"Show Your Gun",              bi:12},
+  demand_keys:          {label:"Demand the Keys",            bi:7},
+  force_out_of_vehicle: {label:"Yank Out",                   bi:2},
+  shoot_driver:         {label:"Shoot the Driver",           bi:12},
+  distract_owner:       {label:"Distract Owner",             bi:2},
+  flee:                 {label:"Leave the Crime Scene",      bi:10},
+  skip_turn:            {label:"Skip This Turn",             bi:0},
+  bank_give_note:       {label:"Pass a Note to Teller",      bi:7},
+  bank_announce:        {label:"Announce the Robbery",       bi:12},
+  bank_demand_teller:   {label:"Demand Cash from Teller",    bi:7},
+  bank_find_manager:    {label:"Find the Bank Manager",      bi:2},
+  bank_lead_to_vault:   {label:"Lead Manager to Vault",      bi:2},
+  bank_demand_vault:    {label:"Demand Vault be Opened",     bi:12},
+  bank_fill_bag:        {label:"Fill a Bag with Cash",       bi:7},
+  bank_leave:           {label:"Leave the Bank",             bi:10},
+};
+
+function getValidActions(locType, ss, playerGs) {
+  const GUN_IDS = ['pistol','shotgun','rifle'];
+  const allInvs = [playerGs ? (playerGs.inventory||[]) : []];
+  for (const c of ((playerGs && playerGs.contacts)||[])) {
+    if (c.status === 'hired' && (c.assignedLocation === null || c.assignedLocation === undefined)) {
+      allInvs.push(c.inventory || []);
+    }
+  }
+  const hasGun      = allInvs.some(inv => inv.some(i => i && GUN_IDS.includes((i.id||'').toLowerCase())));
+  function hasTool(id)     { return allInvs.some(inv => inv.some(i => i && (i.id||'') === id)); }
+  function hasPickTool()   { return allInvs.some(inv => inv.some(i => i && ['tryout_keys','lock_pick_set','snap_gun','pro_pick_set','ignition_decoder'].includes(i.id||''))); }
+  function hasWiringTool() { return allInvs.some(inv => inv.some(i => i && ['wire_cutter','wire_stripper','multimeter','probelight'].includes(i.id||''))); }
+  const acts = [];
+
+  if (locType === 'highway') {
+    if (!ss.driverRemoved) {
+      if (!ss.approached) acts.push('approach_driver');
+      if (!ss.escalationFailed) {
+        acts.push('ask_to_go_out');
+        if (hasGun)          acts.push('show_your_gun');
+        if (ss.gunShown)     acts.push('demand_keys');
+      }
+      acts.push('force_out_of_vehicle');
+      if (hasGun)            acts.push('shoot_driver');
+    } else {
+      if (!ss.gpsChecked && !ss.gpsSkipped) {
+        acts.push('check_gps');
+        acts.push('skip_gps');
+      } else {
+        acts.push('get_in_vehicle');
+      }
+    }
+    acts.push('flee');
+  } else if (locType === 'racing') {
+    if (!ss.ownerDistracted) {
+      acts.push('distract_owner');
+    } else if (!ss.doorOpen) {
+      if (hasPickTool())         acts.push('lockpick_door');
+      if (hasTool('slim_jim'))   acts.push('slim_jim');
+      if (hasTool('pump_wedge')) acts.push('door_opener');
+                                 acts.push('smash_window');
+    } else if (ss.alarmActive && !ss.alarmDisabled) {
+      if (hasWiringTool())       acts.push('disable_alarm');
+      if (hasWiringTool())       acts.push('hotwire_engine');
+    } else if (!ss.engineStarted) {
+      if (hasWiringTool())       acts.push('hotwire_engine');
+      if (hasPickTool())         acts.push('pick_ignition');
+    } else if (!ss.gpsChecked && !ss.gpsSkipped) {
+      acts.push('check_gps');
+      acts.push('skip_gps');
+    } else {
+      acts.push('get_in_vehicle');
+    }
+    acts.push('case_the_area');
+    acts.push('flee');
+  } else {
+    if (!ss.doorOpen) {
+      acts.push('case_the_area');
+      if (hasPickTool())         acts.push('lockpick_door');
+      if (hasTool('slim_jim'))   acts.push('slim_jim');
+      if (hasTool('pump_wedge')) acts.push('door_opener');
+                                 acts.push('smash_window');
+    } else if (ss.alarmActive && !ss.alarmDisabled) {
+      if (hasWiringTool())       acts.push('disable_alarm');
+      if (hasWiringTool())       acts.push('hotwire_engine');
+      if (hasPickTool())         acts.push('pick_ignition');
+    } else if (!ss.engineStarted) {
+      if (hasWiringTool())       acts.push('hotwire_engine');
+      if (hasPickTool())         acts.push('pick_ignition');
+    } else if (!ss.gpsChecked && !ss.gpsSkipped) {
+      acts.push('check_gps');
+      acts.push('skip_gps');
+    } else {
+      acts.push('get_in_vehicle');
+    }
+    acts.push('flee');
+  }
+  return acts;
+}
+
+function buildActionBar(){
+  const acts = getValidActions(loc.type, sceneState, gs);
+  const bar=document.getElementById("actionBar");bar.innerHTML="";
+  acts.forEach(key=>{
+    const def=actDefs[key];if(!def)return;
+    const row=document.createElement("div");
+    row.className="act-row";row.dataset.key=key;
+    row.innerHTML=`<span class="act-radio"></span><span class="act-img" style="${actImg(def.bi)}"></span><span class="act-lbl">${def.label}</span>`;
+    row.addEventListener("click",()=>selectAction(key));
+    bar.appendChild(row);
+  });
+  if (selectedAct && acts.includes(selectedAct)) {
+    selectAction(selectedAct);
+  } else if (acts.length) {
+    selectAction(acts[0]);
+  }
+}
+buildActionBar();
+document.getElementById("policeFill").style.width = policeLevel + "%";
+document.getElementById("policeVal").textContent  = policeLevel;
+function selectAction(key){
+  selectedAct=key;
+  document.querySelectorAll(".act-row").forEach(r=>r.classList.toggle("selected",r.dataset.key===key));
+}
+function makeSlots(id,count){
+  const el=document.getElementById(id);if(!el)return;el.innerHTML="";
+  for(let i=0;i<count;i++){const d=document.createElement("div");d.className="rp-slot"+(i>0?" inactive":"");el.appendChild(d);}
+}
+makeSlots("crimeTargetSlots",6);makeSlots("yourTargetSlots",6);makeSlots("teamSlots",6);makeSlots("reserveSlots",6);
+const teamEl=document.getElementById("teamSlots");
+const teamSlotEls=teamEl.querySelectorAll(".rp-slot");
+if(gs.portraitSrc)teamSlotEls[0].innerHTML=`<img src="${gs.portraitSrc}" onerror="this.style.opacity=0">`;
+teamSlotEls[0].addEventListener("click",()=>renderCrimeLeft({type:"character"}));
+const activeCrew=(gs.contacts||[]).filter(c=>c.status==='hired'&&(c.assignedLocation===null||c.assignedLocation===undefined));
+activeCrew.slice(0,5).forEach((c,i)=>{
+  const sl=teamSlotEls[i+1];
+  if(!sl)return;
+  sl.classList.remove("inactive");
+  if(c.portrait)sl.innerHTML=`<img src="${c.portrait}" onerror="this.style.opacity=0">`;
+  sl.title=c.name;
+  sl.addEventListener("click",()=>renderCrimeLeft({type:"contact",data:c}));
+});
+document.getElementById("yourTargetSlots").querySelector(".rp-slot").addEventListener("click",()=>renderCrimeLeft({type:"vehicle",data:vehData}));
+
+function renderCrimeLeft(ctx){
+  const lp=document.getElementById("crimeLeft");
+  if(ctx.type==="vehicle")lp.innerHTML=renderVehicleView(ctx.data);
+  else if(ctx.type==="npc")lp.innerHTML=renderNpcView(ctx.data);
+  else if(ctx.type==="character")lp.innerHTML=renderCharView();
+  else if(ctx.type==="contact")lp.innerHTML=renderContactView(ctx.data);
+  else lp.innerHTML="";
+}
+function renderCharView(){
+  const s=gs.stats,sk=["acting","shooting","hiding","driving","locksmithing","electronics"];
+  const rows=sk.map(k=>{
+    const pct=Math.round(s[k].val/s[k].max*100);
+    return `<div class="stat-row"><span class="stat-name">${s[k].label}</span><div class="stat-track"><div class="stat-fill" style="width:${pct}%"></div></div><span class="stat-val">${s[k].val}</span></div>`;
+  }).join("");
+  const bp=Array(12).fill(0).map((_,i)=>{
+    const it=gs.inventory[i];
+    return `<div class="bp-slot">${it?`<img src="${it.img}" title="${it.label}">`:""}</div>`;
+  }).join("");
+  const port=gs.portraitSrc?`<img src="${gs.portraitSrc}" onerror="this.style.opacity=0">`:`<span class="portrait-placeholder">?</span>`;
+  return `<div class="char-info"><div class="char-portrait-wrap"><div class="portrait char-portrait">${port}</div><button class="help char-help">?</button></div><div class="char-name">${gs.playerName}</div><div class="stats-area"><div class="stat-row"><span class="stat-name">${s.health.label}</span><div class="stat-track"><div class="stat-fill g" style="width:${s.health.val}%"></div></div><span class="stat-val">${s.health.val}</span></div><div class="stat-row"><span class="stat-name">${s.disguise.label}</span><div class="stat-track"><div class="stat-fill b" style="width:${s.disguise.val}%"></div></div><span class="stat-val">${s.disguise.val}</span></div>${rows}</div><div class="backpack-lbl">${gs.playerName}'s Backpack:</div><div class="inv-grid bp-grid">${bp}</div></div>`;
+}
+function renderContactView(c){
+  const sk=["acting","shooting","hiding","driving","locksmithing","electronics"];
+  const s=c.stats||{};
+  const rows=sk.map(k=>{
+    const st=s[k];if(!st)return "";
+    const pct=Math.round(st.val/st.max*100);
+    return `<div class="stat-row"><span class="stat-name">${st.label}</span><div class="stat-track"><div class="stat-fill" style="width:${pct}%"></div></div><span class="stat-val">${st.val}</span></div>`;
+  }).join("");
+  const bp=Array(12).fill(0).map((_,i)=>{
+    const it=(c.inventory||[])[i];
+    return `<div class="bp-slot">${it?`<img src="${it.img||''}" title="${it.label||''}">`:""}</div>`;
+  }).join("");
+  const port=c.portrait?`<img src="${c.portrait}" onerror="this.style.opacity=0">`:`<span class="portrait-placeholder">?</span>`;
+  return `<div class="char-info"><div class="char-portrait-wrap"><div class="portrait char-portrait">${port}</div></div><div class="char-name">${c.name}</div><div style="font-size:10px;color:var(--text-dim);margin-bottom:3px">${c.tierLabel||''} ${c.profession||''}</div><div class="stats-area">${rows}</div><div class="backpack-lbl">${c.name}'s Backpack:</div><div class="inv-grid bp-grid">${bp}</div></div>`;
+}
+function renderVehicleView(v){
+  const slots=Array(6).fill('<div class="bp-slot"></div>').join("");
+  return `<div class="char-info"><div class="portrait" style="width:100%;height:90px;margin-bottom:3px"><img src="${v.img||""}" onerror="this.style.opacity=0.2"></div><div style="font-family:Oswald,sans-serif;font-size:11px;color:#ffd080;text-align:right;padding:1px 2px">$${(v.price||0).toLocaleString()}</div><div class="char-name">${v.name}</div><div style="font-size:10px;color:var(--text-dim);margin-bottom:4px">${v.spec||""}</div><div class="stats-area"><div class="stat-row"><span class="stat-name" style="width:100px">Condition</span><span class="stat-val">${v.condition||"?"}</span><button class="help">?</button></div><div class="stat-row"><span class="stat-name" style="width:100px;font-size:9px">Locksmithing Def.</span><span class="stat-val">${v.lockDef||"?"}</span><button class="help">?</button></div><div class="stat-row"><span class="stat-name" style="width:100px;font-size:9px">Electronic Def.</span><span class="stat-val">${v.elecDef||"?"}</span><button class="help">?</button></div></div><div class="backpack-lbl">${v.name}'s Inventory:</div><div class="inv-grid bp-grid">${slots}</div></div>`;
+}
+function renderNpcView(npc){
+  const port=npc.img?`<img src="${npc.img}" onerror="this.style.opacity=0">`:`<span class="portrait-placeholder">?</span>`;
+  return `<div class="char-info"><div class="portrait char-portrait" style="margin-bottom:4px">${port}</div><div class="char-name">${npc.name||"Unknown"}</div><div style="font-size:10px;color:var(--text-dim)">${npc.desc||""}</div></div>`;
+}
+function logMsg(text,cls=""){const log=document.getElementById("crimeLog"),p=document.createElement("p");if(cls)p.className=cls;p.textContent=text;log.appendChild(p);log.scrollTop=log.scrollHeight;}
+function addPolice(amount){
+  policeLevel=Math.min(100,policeLevel+amount);
+  document.getElementById("policeFill").style.width=policeLevel+"%";
+  document.getElementById("policeVal").textContent=policeLevel;
+  if(policeLevel>=60){const sec=document.getElementById("policeSection");if(sec.style.display==="none"){sec.style.display="";makeSlots("policeSlots",6);logMsg("You see the Police Patrol.","bad");}}
+  if(policeLevel>=100&&!sceneOver)endScene("busted");
+}
+
+function endScene(result){
+  sceneOver=true;document.getElementById("turnBtn").disabled=true;
+  document.querySelectorAll(".act-icon").forEach(b=>b.style.opacity="0.4");
+  gs.policeReadiness = policeLevel;
+  saveState(gs);
+  if(result==="busted"){
+    logMsg("POLICE ARRIVE — YOU ARE BUSTED!","bad");
+    gs.arrests=(gs.arrests||0)+1;
+    const penalty=applyArrestPenalties(gs);
+    const jailDays = 2 + Math.floor((gs.wantedLevel || 0) / 2);
+    (gs.activeTeam || []).forEach(id => jailContact(gs, id, jailDays));
+    sessionStorage.setItem('arrestResult', JSON.stringify(penalty));
+    setTimeout(()=>window.location.href="arrested.html",1800);
+  }
+  else if(result==="success"){
+    logMsg("You drive away with the vehicle. Back to the city.","good");
+    const slot = assignVehicleToTeam(gs, vehData);
+    if (slot === 'garage') logMsg('Garage is full — vehicle lost.', 'bad');
+    if(loc.locId&&vehData.uid)removeVehicleFromPool(gs,loc.locId,vehData.uid);
+    else saveState(gs);
+    setTimeout(()=>window.location.href="main.html",2000);
+  }
+  else if(result==="fled"){
+    logMsg("You leave empty-handed.","sys");
+    setTimeout(()=>window.location.href="main.html",1200);
+  }
+  else if(result==="bank_success"){
+    logMsg("You walk out of the bank. Time to move.","good");
+    saveState(gs);
+    setTimeout(()=>window.location.href="main.html",1800);
+  }
+}
+
+function doTurn(){
+  if(sceneOver||mpPending)return;
+  if(!selectedAct){logMsg("Select an activity first.","bad");return;}
+  _applyTurnResult(resolveAction(selectedAct,gs,vehicle,sceneState));
+}
+
+function _applyTurnResult(outcome){
+  logMsg(outcome.msg,outcome.cls);
+  if(outcome.skillGain && gs.stats[outcome.skillGain]) {
+    const sk = gs.stats[outcome.skillGain];
+    if(sk.val < sk.max) {
+      sk.val = Math.min(sk.max, sk.val + 1);
+      saveState(gs);
+      logMsg(`${sk.label} improved to ${sk.val}.`, 'sys');
+      const lp = document.getElementById('crimeLeft');
+      if(lp.querySelector('.char-info')) renderCrimeLeft({type:'character'});
+    }
+  }
+  if (outcome.stateUpdate) Object.assign(sceneState, outcome.stateUpdate);
+  if (outcome.pendingTracker) { gs.pendingTrackerCheck = true; saveState(gs); }
+  const heatRise = Math.round((outcome.policeRise||0) * (1 + (gs.wantedLevel||0) * 0.1));
+  addPolice(heatRise);
+  if(!sceneOver){
+    if(outcome.progress==="success") startDriveAway();
+    else if(outcome.progress==="fled") endScene("fled");
+    else if(outcome.progress==="bank_leave") startBankExit();
+    else buildActionBar();
+  }
+  if(!sceneOver){turnNum++;}
+}
+
+function startDriveAway(){
+  sceneOver = true;
+  document.getElementById("turnBtn").disabled = true;
+  document.querySelectorAll(".act-icon").forEach(b => b.style.opacity = "0.4");
+  const chase = resolveDriveAway(gs, policeLevel, vehData.speed || 60);
+  chase.msgs.forEach(m => { setTimeout(() => logMsg(m.text, m.cls), m.delay); });
+  const finalDelay = chase.msgs[chase.msgs.length - 1].delay + 800;
+  if (chase.result === 'escaped') setTimeout(() => endScene('success'), finalDelay);
+  else setTimeout(() => endScene('busted'), finalDelay);
+}
+
+function startBankExit(){
+  sceneOver = true;
+  document.getElementById("turnBtn").disabled = true;
+  document.querySelectorAll(".act-icon").forEach(b => b.style.opacity = "0.4");
+  const chase = resolveDriveAway(gs, policeLevel, 70);
+  chase.msgs.forEach(m => { setTimeout(() => logMsg(m.text, m.cls), m.delay); });
+  const finalDelay = chase.msgs[chase.msgs.length - 1].delay + 800;
+  if (chase.result === 'escaped') setTimeout(() => endScene('bank_success'), finalDelay);
+  else setTimeout(() => endScene('busted'), finalDelay);
+}
+
+function leaveScene(){if(confirm("Leave the crime scene? Any progress will be lost.")){gs.policeReadiness=policeLevel;saveState(gs);window.location.href="main.html";}}
+
+// ── BACKPACK ITEM RIGHT-CLICK POPUP ───────────────────────────────────────────
+document.getElementById('crimeLeft').addEventListener('contextmenu', e => {
+  const slot = e.target.closest('.bp-slot');
+  if (!slot) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const slotIdx = [...slot.parentElement.children].indexOf(slot);
+  const item = gs.inventory[slotIdx];
+  closeCrimeItemPopup();
+  if (!item) return;
+  const mappedAction = ITEM_ACTION_MAP[item.cat] || null;
+  const actionLabel  = mappedAction ? mappedAction.replace(/_/g, ' ') : null;
+  const popup = document.createElement('div');
+  popup.id = 'itemPopup';
+  popup.innerHTML = `
+    <div class="ip-name">${item.label}</div>
+    <div class="ip-cat">${item.cat.replace(/_/g,' ')}</div>
+    <div class="ip-actions">
+      ${mappedAction
+        ? `<button class="ip-use">Use — ${actionLabel}</button>`
+        : `<div class="ip-no-use">No crime use for this item</div>`}
+      <button class="ip-cancel">Cancel</button>
+    </div>`;
+  const r = slot.getBoundingClientRect();
+  popup.style.top  = (r.bottom + 4 + window.scrollY) + 'px';
+  popup.style.left = (r.left  + window.scrollX) + 'px';
+  document.body.appendChild(popup);
+  if (mappedAction) {
+    popup.querySelector('.ip-use').addEventListener('click', () => {
+      closeCrimeItemPopup();
+      if (sceneOver) return;
+      selectedAct = mappedAction;
+      document.querySelectorAll('.act-row').forEach(row => {
+        row.classList.toggle('selected', row.dataset.key === mappedAction);
+      });
+      doTurn();
+    });
+  }
+  popup.querySelector('.ip-cancel').addEventListener('click', closeCrimeItemPopup);
+});
+function closeCrimeItemPopup() { const p = document.getElementById('itemPopup'); if (p) p.remove(); }
+document.addEventListener('click', e => { if (!e.target.closest('#itemPopup, .bp-slot')) closeCrimeItemPopup(); });
+document.addEventListener('contextmenu', e => { if (!e.target.closest('.bp-slot')) closeCrimeItemPopup(); });
+
+// ── MODAL SYSTEM ──────────────────────────────────────────────────────────────
+function showModal(title, bodyHTML) {
+  closeModal();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay'; overlay.id = 'modalOverlay';
+  overlay.innerHTML = `<div class="modal-box"><div class="modal-titlebar">${title}</div><div class="modal-body">${bodyHTML}</div><div class="modal-footer"><button class="modal-close-btn" id="modalCloseBtn">Close</button></div></div>`;
+  document.body.appendChild(overlay);
+  document.getElementById('modalCloseBtn').addEventListener('click', closeModal);
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+}
+function closeModal() { const el = document.getElementById('modalOverlay'); if (el) el.remove(); }
+
+document.getElementById('crimeLeft').addEventListener('click', e => {
+  if (e.target.closest('.char-help')) {
+    const prof      = gs.profession || 'unknown';
+    const arrests   = gs.arrests || 0;
+    const crimes    = gs.crimesCommitted || 0;
+    const arrestTxt = arrests === 0 ? 'never' : `${arrests} time${arrests > 1 ? 's' : ''}`;
+    const crimeTxt  = crimes <= 1
+      ? 'Committed no crime so far.'
+      : `Committed ${crimes - 1} crime${crimes - 1 > 1 ? 's' : ''} before this one.`;
+    showModal('Personal Information', `
+      <p><strong>${gs.playerName}</strong>, ${prof}.</p>
+      <p>This is your main character.</p>
+      <p>Profession: ${prof}<br>Arrested: ${arrestTxt}</p>
+      <p>${crimeTxt}</p>
+      <p>Day: ${gs.day}<br>Cash: $${(gs.cash||0).toLocaleString()}<br>Debt: $${(gs.debt||0).toLocaleString()}</p>`);
+  }
+});
+</script>
+</body>
+</html>

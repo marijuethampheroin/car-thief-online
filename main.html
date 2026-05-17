@@ -894,7 +894,7 @@ function renderBankPanel() {
 
 function goBankRob() {
   sessionStorage.setItem('targetLocation', JSON.stringify({ type: 'bank', label: 'Bank' }));
-  window.location.href = 'crime.html';
+  window.location.href = 'classic_crime.html';
 }
 
 // ── Sub-renderer: Airport ─────────────────────────────────────────────────────
@@ -1424,7 +1424,7 @@ function goToCrime() {
   } else {
     // Single-player: navigate immediately
     sessionStorage.setItem('targetLocation', JSON.stringify(target));
-    window.location.href = 'crime.html';
+    window.location.href = 'classic_crime.html';
   }
 }
 
@@ -1982,7 +1982,7 @@ function mpHandleMsg(msg) {
 
     case 'steal_ack':
       // Server confirmed our claim — proceed to crime screen
-      window.location.href = 'crime.html';
+      window.location.href = 'classic_crime.html';
       break;
 
     case 'steal_nack':
