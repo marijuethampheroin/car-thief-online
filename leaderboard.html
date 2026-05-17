@@ -121,17 +121,9 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
 
   <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyDsh_Wpfeed0gQU6m1aZgHENhMb9tBYi4c",
-      authDomain: "car-thief-online.firebaseapp.com",
-      projectId: "car-thief-online",
-      storageBucket: "car-thief-online.firebasestorage.app",
-      messagingSenderId: "942239496002",
-      appId: "1:942239496002:web:e387b44b309372905dbadb"
-    };
-
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db   = firebase.firestore();

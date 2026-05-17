@@ -1811,10 +1811,11 @@ function renderMapIcons() {
     if (missingLocs.length) {
       initLocationPools(gs, missingLocs);
     }
-    const missingHouseLocs = stealableLocDefs.filter(loc => loc.type === 'residential' && !gs.housePools[loc.id]);
-    if (missingHouseLocs.length) {
-      initHousePools(gs, missingHouseLocs);
-    }
+  }
+  // House pools are always client-side — houses aren't contested resources, no server sync needed
+  const missingHouseLocs = stealableLocDefs.filter(loc => loc.type === 'residential' && !gs.housePools[loc.id]);
+  if (missingHouseLocs.length) {
+    initHousePools(gs, missingHouseLocs);
   }
 
   mapIcons.forEach(ic => {
