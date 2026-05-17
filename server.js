@@ -256,6 +256,7 @@ function handleMessage(ws, playerId, roomCode, data) {
       // Build per-player states
       for (const [id, p] of room.players) {
         const state = logic.initState(p.name, p.portraitSrc, p.profession);
+        state.currentCity = p.startCityId || data.startCityId || 'las_vegas';
         room.playerStates.set(id, state);
       }
       // Receive locDefs from host payload; fall back to defaults
@@ -606,7 +607,8 @@ wss.on('connection', (ws, req) => {
       room.isPublic = data.isPublic !== false;
       room.players.set(playerId, {
         ws, name: data.name, portraitSrc: data.portraitSrc || '',
-        profession: data.profession || 'thief', connected: true, uid: verifiedUid,
+        profession: data.profession || 'thief', startCityId: data.startCityId || 'las_vegas',
+        connected: true, uid: verifiedUid,
       });
       rooms.set(roomCode, room);
       browsers.delete(ws);
@@ -626,7 +628,8 @@ wss.on('connection', (ws, req) => {
       roomCode = data.code;
       room.players.set(playerId, {
         ws, name: data.name, portraitSrc: data.portraitSrc || '',
-        profession: data.profession || 'thief', connected: true, uid: verifiedUid,
+        profession: data.profession || 'thief', startCityId: data.startCityId || 'las_vegas',
+        connected: true, uid: verifiedUid,
       });
       browsers.delete(ws);
       send(ws, { type:'room_joined', code: roomCode, playerId, roomName: room.roomName, players: playerList(room) });

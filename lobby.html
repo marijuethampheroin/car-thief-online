@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Car Thief Online — Lobby</title>
+<title>Car Thief Online ï¿½ Lobby</title>
 <link rel="stylesheet" href="styles.css">
 <script src="game.js"></script>
 <style>
@@ -136,7 +136,7 @@ body { background: #2e1800; }
 <body>
 <div class="window dialog">
   <div class="window-titlebar">
-    Car Thief Online — Multiplayer Lobby
+    Car Thief Online ï¿½ Multiplayer Lobby
     <div class="win-btns"><button class="win-btn">?</button></div>
   </div>
 
@@ -154,10 +154,10 @@ body { background: #2e1800; }
       </div>
       <div class="pic-lbl" id="picLbl">Picture: 1 (out of 28)</div>
       <div class="pic-nav">
-        <button class="btn" onclick="navPic(-29)">«</button>
-        <button class="btn" onclick="navPic(-1)">‹</button>
-        <button class="btn" onclick="navPic(1)">›</button>
-        <button class="btn" onclick="navPic(29)">»</button>
+        <button class="btn" onclick="navPic(-29)">ï¿½</button>
+        <button class="btn" onclick="navPic(-1)">ï¿½</button>
+        <button class="btn" onclick="navPic(1)">ï¿½</button>
+        <button class="btn" onclick="navPic(29)">ï¿½</button>
       </div>
     </div>
 
@@ -325,7 +325,7 @@ function doJoin() {
 
 function startGame() {
   // Send locDefs so the server can build the shared vehicle pool
-  send({ type:'start_game', locDefs: LOC_DEFS });
+  send({ type:'start_game', locDefs: LOC_DEFS, startCityId: getCharacter().startCityId });
 }
 
 function leaveRoom() {
@@ -393,7 +393,7 @@ function handleMsg(msg) {
       sessionStorage.setItem('playerName',    msg.state.playerName);
       sessionStorage.setItem('portraitSrc',   msg.state.portraitSrc);
       sessionStorage.setItem('profession',    msg.state.profession);
-      // Keep WS alive — main.html will reconnect using stored id/code
+      // Keep WS alive ï¿½ main.html will reconnect using stored id/code
       window.location.href = 'game.html';
       break;
 
@@ -433,7 +433,7 @@ function addPlayerRow(p) {
   list.appendChild(row);
 }
 
-// Host is whoever created the room — we track isHost locally; for display
+// Host is whoever created the room ï¿½ we track isHost locally; for display
 // purposes the host is simply the first player in the list (id matches myId when isHost).
 function getHostId() { return isHost ? myId : null; }
 
@@ -462,7 +462,7 @@ function startDots() {
 function stopDots() { clearInterval(dotsTimer); }
 
 // ---------------------------------------------------------------------------
-// LOC_DEFS — canonical stealable location list sent to server on start_game.
+// LOC_DEFS ï¿½ canonical stealable location list sent to server on start_game.
 // Must match the stealable entries in main.html's mapIcons array.
 // ---------------------------------------------------------------------------
 const LOC_DEFS = [
