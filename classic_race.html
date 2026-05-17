@@ -129,7 +129,7 @@ let mpWs      = null;
 // -- State --------------------------------------------------------------------
 let gs = loadState();
 if (!gs || !gs.currentRace) {
-  window.location.href = 'game.html';
+  window.location.href = 'main.html';
 }
 
 const race      = gs.currentRace;
@@ -220,7 +220,7 @@ document.getElementById('turnBtn').addEventListener('click', () => {
 
   // Singleplayer path — resolve locally
   gs = loadState();
-  if (!gs.currentRace) { window.location.href = 'game.html'; return; }
+  if (!gs.currentRace) { window.location.href = 'main.html'; return; }
 
   const result = resolveRaceTurn(gs);
   gs = loadState();
@@ -235,7 +235,7 @@ document.getElementById('turnBtn').addEventListener('click', () => {
     document.getElementById('closeBtn').addEventListener('click', () => {
       if (result.winner === 'player') resolveRaceWin(gs);
       else                            resolveRaceLoss(gs);
-      window.location.href = 'game.html';
+      window.location.href = 'main.html';
     });
     if (result.winner === 'player') document.getElementById('oppArrow').style.opacity = '0.3';
   }
@@ -262,7 +262,7 @@ function mpFinishRace(result, state) {
   const wrap = document.getElementById('turnBtnWrap');
   wrap.innerHTML = `<button class="btn btn-go" id="closeBtn" style="min-width:80px;padding:4px 14px">Close</button>`;
   document.getElementById('closeBtn').addEventListener('click', () => {
-    window.location.href = 'game.html';
+    window.location.href = 'main.html';
   });
   if (result.winner === 'player') document.getElementById('oppArrow').style.opacity = '0.3';
 }

@@ -164,14 +164,18 @@
   <!-- BOTTOM BAR -->
   <div class="ap-bottom">
     <div class="ap-status" id="apStatus">Pick a destination city.</div>
-    <button class="ap-cancel-btn" onclick="window.location.href='game.html'">Cancel</button>
+    <button class="ap-cancel-btn" onclick="window.location.href='main.html'">Cancel</button>
   </div>
 
 </div>
 
 <script>
+const MP_ID   = sessionStorage.getItem('playerId');
+const MP_CODE = sessionStorage.getItem('roomCode');
+const IS_MP   = !!(MP_ID && MP_CODE);
+
 let gs = loadState();
-if (!gs) { window.location.href = 'game.html'; }
+if (!gs) { window.location.href = 'main.html'; }
 
 function toggleMenu() {
   const d = document.getElementById('menuDropdown');
@@ -273,7 +277,7 @@ document.getElementById('driveToBtn').addEventListener('click', () => {
     return;
   }
   gs = loadState();
-  window.location.href = 'game.html';
+  window.location.href = 'main.html';
 });
 </script>
 </body>

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Car Thief Online — Airport</title>
+<title>Car Thief Online ï¿½ Airport</title>
 <link rel="stylesheet" href="styles.css">
 <script src="game.js"></script>
 <style>
@@ -61,7 +61,7 @@
   .ap-btn-flyto:disabled { background: var(--bg-dark); color: var(--text-dim); }
 
 
-  /* Center — USA map */
+  /* Center ï¿½ USA map */
   .ap-map-wrap {
     flex: 1;
     position: relative;
@@ -171,7 +171,7 @@
           <span id="apCityName"></span>
         </div>
         <div style="font-size:9px;color:var(--text-dim);margin-top:2px">Carries Items:</div>
-        <div style="font-size:9px;color:var(--text-dim);font-style:italic">—</div>
+        <div style="font-size:9px;color:var(--text-dim);font-style:italic">ï¿½</div>
         <div class="ap-action-btns">
           <button class="ap-btn ap-btn-flyto" id="flyToBtn" disabled>Fly To...</button>
         </div>
@@ -190,14 +190,14 @@
   <!-- BOTTOM BAR -->
   <div class="ap-bottom">
     <div class="ap-status" id="apStatus">Please pick the destination point.</div>
-    <button class="ap-cancel-btn" onclick="window.location.href='game.html'">Cancel</button>
+    <button class="ap-cancel-btn" onclick="window.location.href='main.html'">Cancel</button>
   </div>
 
 </div><!-- /window -->
 
 <script>
 let gs = loadState();
-if (!gs) { window.location.href = 'game.html'; }
+if (!gs) { window.location.href = 'main.html'; }
 
 // Ensure currentCity is always set (guard for old saves)
 if (!gs.currentCity) {
@@ -242,7 +242,7 @@ function updateFlyBtn() {
     statusEl.innerHTML = `<span class="ap-err">Not enough cash. Flight to ${dest.name} costs $${TRAVEL_COST.toLocaleString()}.</span>`;
   } else {
     btn.disabled = false;
-    statusEl.innerHTML = `Fly to <strong style="color:#ffd080">${dest.name}</strong> — <span class="ap-cost">$${TRAVEL_COST.toLocaleString()}</span>`;
+    statusEl.innerHTML = `Fly to <strong style="color:#ffd080">${dest.name}</strong> ï¿½ <span class="ap-cost">$${TRAVEL_COST.toLocaleString()}</span>`;
   }
 }
 
@@ -286,7 +286,7 @@ document.getElementById('flyToBtn').addEventListener('click', () => {
     return;
   }
   gs = loadState();
-  window.location.href = 'game.html';
+  window.location.href = 'main.html';
 });
 
 
