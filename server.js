@@ -697,7 +697,7 @@ wss.on('connection', (ws, req) => {
       p.ws = ws; p.connected = true;
       if (p._disconnectTimer) { clearTimeout(p._disconnectTimer); p._disconnectTimer = null; }
       const state = room.playerStates.get(playerId);
-      send(ws, { type:'reconnected', state, locationPools: room.locationPools, locDefs: room.locDefs, players: playerList(room), nextDayAt: room.nextDayAt });
+      send(ws, { type:'reconnected', state, locationPools: state.locationPools, locDefs: room.locDefs, players: playerList(room), nextDayAt: room.nextDayAt });
       broadcast(room, { type:'player_reconnected', playerId });
       console.log(`[${roomCode}] ${p.name} reconnected.`);
       return;
