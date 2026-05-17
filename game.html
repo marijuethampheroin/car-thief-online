@@ -2110,11 +2110,13 @@ function mpHandleMsg(msg) {
     case 'reconnected': {
       // Preserve the locally-saved city — airport.html writes it to sessionStorage
       // before navigating, so it's more current than the server's state.
-      const localCity = gs.currentCity;
+      const localCity   = gs.currentCity;
+      const localCities = gs.cities;
       gs = msg.state;
       if (msg.locationPools) gs.locationPools = msg.locationPools;
       if (msg.locDefs) gs.mpLocDefs = msg.locDefs;
-      if (localCity) gs.currentCity = localCity;
+      if (localCity)   gs.currentCity = localCity;
+      if (localCities) gs.cities = localCities;
       saveState(gs);
       renderHUD();
       renderMapIcons();
