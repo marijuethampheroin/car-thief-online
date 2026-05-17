@@ -2,6 +2,38 @@
 
 ---
 
+## Session 37 — 2026-05-17 — Residential Burglary
+
+### Added — `items.json`
+- 11 new loot items (indices 55–65), `cat: "loot"`, `slot: "loot"`, no `buy` price
+- Three tiers: low (Cash Envelope, Cheap Watch, Silver Necklace, Old Camera), mid (Portable DVD Player, Laptop, Digital Camera, Gold Watch), high (Diamond Ring, Rare Coin Collection, Antique)
+
+### Added — `game.js`
+- `HOUSE_DATA` array — 28 entries (house01–18, house50–60) with `img`, `tier`, `label`
+- `LOOT_TIERS` map — per-tier item index pools
+- `_generateHousePool(locId)` — 3–6 random houses, weighted toward low tier
+- `initHousePools(state, locDefs)` — additive init for residential locations
+- `refreshHousePools(state, locDefs)` — daily 20% turnover, replenish below 2
+- `resolveBurglary(state, houseIndex)` — rolls 1–3 loot items, adds to inventory, returns added items
+- `advanceDay()` now calls `refreshHousePools`
+
+### Added — `game.html`
+- `renderResidentialPanel(ic, pool)` — house grid panel (mirrors steal panel)
+- `renderHouseDetail(h)` — detail view with house image, label, tier, Burglarize button
+- `goToBurglary()` — sets `targetLocation` with `method: 'burglary'` and `house` data
+- `renderMapIcons()` — residential click now routes to `renderResidentialPanel` instead of `renderStealPanel`
+- `renderLeftPanel` switch — new `'residential'` case
+- `renderMapIcons()` — `initHousePools` called for missing residential locations on load
+
+### Changed — `crime.html` + `classic_crime.html`
+- `isBurglary` flag derived from `loc.method === 'burglary'`
+- Scene image swapped to `houseData.img` for burglary
+- `vehicle` object uses fixed lock/elec defaults for burglary (same covert steal flow)
+- `endScene('success')` — burglary path calls `resolveBurglary`, logs loot, no vehicle assigned
+- `endScene('fled')` — burglary skips `steal_abort` WebSocket message
+
+---
+
 ## Session 36 — 2026-05-17 — Shared city layouts
 
 ### Fixed — `logic.js`

@@ -171,8 +171,10 @@ gs.crimesCommitted = (gs.crimesCommitted || 0) + 1;
 saveState(gs);
 const tgtLoc=sessionStorage.getItem("targetLocation");
 const loc=tgtLoc?JSON.parse(tgtLoc):{type:"residential",label:"Residential Area",method:"steal"};
+const isBurglary = loc.method === 'burglary';
+const houseData = isBurglary ? (loc.house || {}) : null;
 const vehData=loc.vehicle||{name:"Unknown Vehicle",body:"Sedan",seats:4,price:5000,speed:60,lockDef:20,elecDef:20,condition:50,imgIdx:1};
-const vehicle={lockDef:vehData.lockDef, elecDef:vehData.elecDef, body:(vehData.body||'').toLowerCase()};
+const vehicle={lockDef: isBurglary ? 30 : vehData.lockDef, elecDef: isBurglary ? 20 : vehData.elecDef, body: isBurglary ? 'house' : (vehData.body||'').toLowerCase()};
 const sceneImgs={
   highway:"Graphics/UI_elements/HIGHWAY.BMP",
   residential:"Graphics/UI_elements/group_house.bmp",
@@ -180,7 +182,9 @@ const sceneImgs={
   racing:"Graphics/UI_elements/group_ground.bmp",
   bank:"Graphics/UI_elements/group_office.bmp"
 };
-document.getElementById("sceneImg").src=sceneImgs[loc.type]||sceneImgs.residential;
+document.getElementById("sceneImg").src = isBurglary && houseData.img
+  ? houseData.img
+  : (sceneImgs[loc.type] || sceneImgs.residential);
 function actImg(idx){return `background-position:calc(${idx}/13*100%) 0`;}
 const actDefs={
   case_the_area:        {label:"Case the Area",              bi:3},
@@ -436,20 +440,30 @@ function endScene(result){
     setTimeout(()=>window.location.href="arrested.html",1800);
   }
   else if(result==="success"){
-    logMsg("You drive away with the vehicle. Back to the city.","good");
-    if(IS_MP && mpWs && mpWs.readyState===1){
-      mpWs.send(JSON.stringify({ type:'steal_success', vehicle: vehData, uid: vehData && vehData.uid }));
+    if (isBurglary) {
+      const loot = resolveBurglary(gs, houseData.index);
+      if (loot.length) {
+        logMsg("You clear out the house. Loot: " + loot.map(i => i.name).join(', ') + ".","good");
+      } else {
+        logMsg("You search the house but find nothing of value.","sys");
+      }
+      setTimeout(()=>window.location.href="game.html",2000);
     } else {
-      const slot = assignVehicleToTeam(gs, vehData);
-      if (slot === 'garage') logMsg('Garage is full — vehicle lost.', 'bad');
-      if(loc.locId&&vehData.uid)removeVehicleFromPool(gs,loc.locId,vehData.uid);
-      else saveState(gs);
+      logMsg("You drive away with the vehicle. Back to the city.","good");
+      if(IS_MP && mpWs && mpWs.readyState===1){
+        mpWs.send(JSON.stringify({ type:'steal_success', vehicle: vehData, uid: vehData && vehData.uid }));
+      } else {
+        const slot = assignVehicleToTeam(gs, vehData);
+        if (slot === 'garage') logMsg('Garage is full — vehicle lost.', 'bad');
+        if(loc.locId&&vehData.uid)removeVehicleFromPool(gs,loc.locId,vehData.uid);
+        else saveState(gs);
+      }
+      setTimeout(()=>window.location.href="game.html",2000);
     }
-    setTimeout(()=>window.location.href="game.html",2000);
   }
   else if(result==="fled"){
     logMsg("You leave empty-handed.","sys");
-    if(IS_MP && mpWs && mpWs.readyState===1 && vehData && vehData.uid){
+    if(!isBurglary && IS_MP && mpWs && mpWs.readyState===1 && vehData && vehData.uid){
       mpWs.send(JSON.stringify({ type:'steal_abort', uid: vehData.uid }));
     }
     setTimeout(()=>window.location.href="game.html",1200);

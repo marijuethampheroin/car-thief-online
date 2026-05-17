@@ -377,6 +377,7 @@ function advanceDay(state, locDefs) {
   // Police readiness decays 15 pts per day (heat cools down when lying low)
   state.policeReadiness = Math.max(0, (state.policeReadiness || 0) - 15);
   if (locDefs) refreshLocationPools(state, locDefs);
+  if (locDefs) refreshHousePools(state, locDefs);
   advanceCityLocations(state);
   initShopStock(state);
   const dealLog = resolveDealingIncome(state);
@@ -1393,6 +1394,135 @@ const ITEMS_DATA = [
   { index: 53, name:'Heroin (Small)',            cat:'drug', slot:'drug', buy: 2500, sell:1250, sellMid:  9750 },
   { index: 54, name:'Heroin (Large)',            cat:'drug', slot:'drug', buy: 5000, sell:2500, sellMid: 19500 },
 ];
+
+// ---------------------------------------------------------------------------
+// HOUSES
+// ---------------------------------------------------------------------------
+
+/**
+ * HOUSE_DATA — 28 entries matching Graphics/houses/house01–18 + house50–60.
+ * tier: 'low' | 'mid' | 'high'  (determines loot table on successful burglary)
+ * label: displayed in the panel detail view
+ */
+const HOUSE_DATA = [
+  { index:  1, img:'Graphics/houses/house01.png', tier:'low',  label:'Small Bungalow'    },
+  { index:  2, img:'Graphics/houses/house02.png', tier:'low',  label:'Corner Cottage'    },
+  { index:  3, img:'Graphics/houses/house03.png', tier:'low',  label:'Row House'         },
+  { index:  4, img:'Graphics/houses/house04.png', tier:'low',  label:'Duplex'            },
+  { index:  5, img:'Graphics/houses/house05.png', tier:'low',  label:'Studio Flat'       },
+  { index:  6, img:'Graphics/houses/house06.png', tier:'low',  label:'Terraced House'    },
+  { index:  7, img:'Graphics/houses/house07.png', tier:'mid',  label:'Ranch House'       },
+  { index:  8, img:'Graphics/houses/house08.png', tier:'mid',  label:'Split-Level Home'  },
+  { index:  9, img:'Graphics/houses/house09.png', tier:'mid',  label:'Colonial House'    },
+  { index: 10, img:'Graphics/houses/house10.png', tier:'mid',  label:'Craftsman Home'    },
+  { index: 11, img:'Graphics/houses/house11.png', tier:'mid',  label:'Cape Cod'          },
+  { index: 12, img:'Graphics/houses/house12.png', tier:'mid',  label:'Tudor Home'        },
+  { index: 13, img:'Graphics/houses/house13.png', tier:'high', label:'Modern Villa'      },
+  { index: 14, img:'Graphics/houses/house14.png', tier:'high', label:'Executive Home'    },
+  { index: 15, img:'Graphics/houses/house15.png', tier:'high', label:'Gated Estate'      },
+  { index: 16, img:'Graphics/houses/house16.png', tier:'high', label:'Luxury Townhouse'  },
+  { index: 17, img:'Graphics/houses/house17.png', tier:'high', label:'Penthouse Suite'   },
+  { index: 18, img:'Graphics/houses/house18.png', tier:'high', label:'Manor House'       },
+  { index: 50, img:'Graphics/houses/house50.png', tier:'low',  label:'Rundown Flat'      },
+  { index: 51, img:'Graphics/houses/house51.png', tier:'low',  label:'Old Bungalow'      },
+  { index: 52, img:'Graphics/houses/house52.png', tier:'mid',  label:'Brick House'       },
+  { index: 53, img:'Graphics/houses/house53.png', tier:'mid',  label:'Suburban Home'     },
+  { index: 54, img:'Graphics/houses/house54.png', tier:'mid',  label:'Semi-Detached'     },
+  { index: 55, img:'Graphics/houses/house55.png', tier:'mid',  label:'Garden House'      },
+  { index: 56, img:'Graphics/houses/house56.png', tier:'high', label:'Hillside Villa'    },
+  { index: 57, img:'Graphics/houses/house57.png', tier:'high', label:'Corner Estate'     },
+  { index: 58, img:'Graphics/houses/house58.png', tier:'high', label:'Restored Mansion'  },
+  { index: 59, img:'Graphics/houses/house59.png', tier:'high', label:'Lakefront Home'    },
+  { index: 60, img:'Graphics/houses/house60.png', tier:'high', label:'Hilltop Retreat'   },
+];
+
+const LOOT_TIERS = {
+  low:  [55, 56, 57, 58],
+  mid:  [55, 56, 57, 58, 59, 60, 61, 62],
+  high: [59, 60, 61, 62, 63, 64, 65],
+};
+
+/**
+ * _generateHousePool(locId)
+ * Returns 3–6 random house entries for a residential location.
+ * Weighted toward lower tiers (more common houses).
+ */
+function _generateHousePool(locId) {
+  const tickets = [];
+  for (const h of HOUSE_DATA) {
+    const w = h.tier === 'low' ? 4 : h.tier === 'mid' ? 2 : 1;
+    for (let i = 0; i < w; i++) tickets.push(h.index);
+  }
+  const count = 3 + Math.floor(Math.random() * 4); // 3–6
+  const picked = new Set();
+  let attempts = 0;
+  while (picked.size < count && attempts < 200) {
+    picked.add(tickets[Math.floor(Math.random() * tickets.length)]);
+    attempts++;
+  }
+  return [...picked].map(idx => Object.assign({}, HOUSE_DATA.find(h => h.index === idx), { locId }));
+}
+
+/**
+ * initHousePools(state, locDefs)
+ * Populates state.housePools for every residential location.
+ * Additive — never overwrites existing entries.
+ */
+function initHousePools(state, locDefs) {
+  if (!state.housePools) state.housePools = {};
+  for (const loc of locDefs) {
+    if (loc.type === 'residential' && !state.housePools[loc.id]) {
+      state.housePools[loc.id] = _generateHousePool(loc.id);
+    }
+  }
+  saveState(state);
+}
+
+/**
+ * refreshHousePools(state, locDefs)
+ * Daily turnover: 20% chance each house leaves. Replenish below 2.
+ * Called by advanceDay().
+ */
+function refreshHousePools(state, locDefs) {
+  if (!state.housePools) { initHousePools(state, locDefs); return; }
+  for (const loc of locDefs) {
+    if (loc.type !== 'residential') continue;
+    let pool = state.housePools[loc.id] || [];
+    pool = pool.filter(() => Math.random() > 0.20);
+    if (pool.length < 2) {
+      const fresh = _generateHousePool(loc.id);
+      const toAdd = 2 - pool.length + Math.floor(Math.random() * 2);
+      pool.push(...fresh.slice(0, toAdd));
+    }
+    state.housePools[loc.id] = pool;
+  }
+}
+
+/**
+ * resolveBurglary(state, houseIndex)
+ * Rolls 1–3 loot items from the house's tier table and adds them to inventory.
+ * Returns array of item objects added (for display in crime.html result message).
+ */
+function resolveBurglary(state, houseIndex) {
+  const house = HOUSE_DATA.find(h => h.index === houseIndex);
+  if (!house) return [];
+  const tier = house.tier || 'low';
+  const pool = LOOT_TIERS[tier] || LOOT_TIERS.low;
+  const count = 1 + Math.floor(Math.random() * 3); // 1–3 items
+  if (!state.inventory) state.inventory = [];
+  const added = [];
+  for (let i = 0; i < count; i++) {
+    if (state.inventory.length >= 12) break;
+    const idx = pool[Math.floor(Math.random() * pool.length)];
+    const item = ITEMS_DATA.find(it => it.index === idx);
+    if (item) {
+      state.inventory.push({ index: item.index, name: item.name, cat: item.cat, slot: item.slot, sell: item.sell });
+      added.push(item);
+    }
+  }
+  saveState(state);
+  return added;
+}
 
 /**
  * getItem(index)

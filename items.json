@@ -53,5 +53,17 @@
   { "index": 51, "name": "Cocaine (Small)", "cat": "drug", "slot": "drug", "buy": 1500, "sell":  750, "sellMid":  5750 },
   { "index": 52, "name": "Cocaine (Large)", "cat": "drug", "slot": "drug", "buy": 3000, "sell": 1500, "sellMid": 11500 },
   { "index": 53, "name": "Heroin (Small)",  "cat": "drug", "slot": "drug", "buy": 2500, "sell": 1250, "sellMid":  9750 },
-  { "index": 54, "name": "Heroin (Large)",  "cat": "drug", "slot": "drug", "buy": 5000, "sell": 2500, "sellMid": 19500 }
+  { "index": 54, "name": "Heroin (Large)",  "cat": "drug", "slot": "drug", "buy": 5000, "sell": 2500, "sellMid": 19500 },
+
+  { "index": 55, "name": "Cash Envelope",        "cat": "loot", "slot": "loot", "tier": "low",  "sell":  150 },
+  { "index": 56, "name": "Cheap Watch",           "cat": "loot", "slot": "loot", "tier": "low",  "sell":  200 },
+  { "index": 57, "name": "Silver Necklace",       "cat": "loot", "slot": "loot", "tier": "low",  "sell":  250 },
+  { "index": 58, "name": "Old Camera",            "cat": "loot", "slot": "loot", "tier": "low",  "sell":  180 },
+  { "index": 59, "name": "Portable DVD Player",   "cat": "loot", "slot": "loot", "tier": "mid",  "sell":  400 },
+  { "index": 60, "name": "Laptop",                "cat": "loot", "slot": "loot", "tier": "mid",  "sell":  700 },
+  { "index": 61, "name": "Digital Camera",        "cat": "loot", "slot": "loot", "tier": "mid",  "sell":  500 },
+  { "index": 62, "name": "Gold Watch",            "cat": "loot", "slot": "loot", "tier": "mid",  "sell":  800 },
+  { "index": 63, "name": "Diamond Ring",          "cat": "loot", "slot": "loot", "tier": "high", "sell": 1500 },
+  { "index": 64, "name": "Rare Coin Collection",  "cat": "loot", "slot": "loot", "tier": "high", "sell": 1200 },
+  { "index": 65, "name": "Antique",               "cat": "loot", "slot": "loot", "tier": "high", "sell": 2000 }
 ]

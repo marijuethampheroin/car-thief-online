@@ -722,7 +722,8 @@ function renderLeftPanel(ctx) {
     case 'bank':     renderBankPanel(); break;
     case 'airport':    renderAirportPanel(); break;
     case 'dealer_npc': renderDealerNpcPanel(ctx.data?.ic); break;
-    case 'stealPool': renderStealPanel(ctx.data.ic, ctx.data.pool); break;
+    case 'stealPool':   renderStealPanel(ctx.data.ic, ctx.data.pool); break;
+    case 'residential': renderResidentialPanel(ctx.data.ic, ctx.data.pool); break;
     case 'contact':  lp.innerHTML = renderContactView(ctx.data); break;
     case 'character':
     default:         lp.innerHTML = renderCharView();             break;
@@ -1206,6 +1207,83 @@ function renderStealDetail(v, ic) {
 
 // ── Sub-renderer: Store ───────────────────────────────────────────────────────
 let storeSelectedIndex = null;
+
+// ── Sub-renderer: Residential / House Pool ────────────────────────────────────
+let selectedHouse = null;
+
+function renderResidentialPanel(ic, pool) {
+  currentLocation = ic;
+  selectedHouse   = null;
+
+  const lp = document.getElementById('leftPanel');
+
+  const tierColor = { low: '#a08060', mid: '#c0a060', high: '#e0c060' };
+
+  const slots = pool.map((h, i) => {
+    return `<div class="dealer-slot bp-slot steal-pool-slot" data-house-idx="${i}" style="width:31px;height:31px;cursor:pointer;overflow:hidden;" title="${h.label}">
+      <img src="${h.img}" style="width:100%;height:100%;object-fit:cover;image-rendering:pixelated" onerror="this.style.opacity=0.2">
+    </div>`;
+  }).join('');
+  const empty = Array(Math.max(0, 6 - pool.length))
+    .fill('<div class="bp-slot inactive" style="width:31px;height:31px"></div>').join('');
+
+  lp.innerHTML = `
+    <div class="char-info" style="display:flex;flex-direction:column;height:100%;padding:4px">
+      <div id="houseInfoZone" style="flex:0 0 auto;overflow:hidden;color:#c8a96e;font-size:10px;display:flex;align-items:center;justify-content:center;opacity:0.5;font-family:'Oswald',sans-serif;letter-spacing:0.3px;min-height:24px">
+        ${ic.label} — Select a house to burglarize
+      </div>
+      <div style="margin-top:auto">
+        <hr class="lp-divider">
+        <div class="lp-divider-lbl">Houses</div>
+        <div class="inv-grid bp-grid char-info steal-pool-grid" id="housePoolGrid" style="gap:1px">${slots}${empty}</div>
+      </div>
+    </div>`;
+
+  document.getElementById('housePoolGrid').addEventListener('click', e => {
+    const slot = e.target.closest('.steal-pool-slot');
+    if (!slot) return;
+    const idx = parseInt(slot.dataset.houseIdx);
+    if (isNaN(idx) || idx >= pool.length) return;
+    selectedHouse = pool[idx];
+    renderHouseDetail(selectedHouse);
+    document.querySelectorAll('.steal-pool-slot').forEach(s => s.classList.remove('selected'));
+    slot.classList.add('selected');
+  });
+}
+
+function renderHouseDetail(h) {
+  const zone = document.getElementById('houseInfoZone');
+  if (!zone) return;
+  const tierLabel = { low: 'Low-value home', mid: 'Mid-range home', high: 'High-value home' };
+  const tierCol   = { low: '#a08060',         mid: '#c8a040',        high: '#e0c060'         };
+  zone.style.opacity    = '1';
+  zone.style.display    = 'block';
+  zone.style.alignItems = 'flex-start';
+  zone.style.justifyContent = 'flex-start';
+  zone.innerHTML = `
+    <div style="width:100%">
+      <div style="width:100%;aspect-ratio:4/3;overflow:hidden;margin-bottom:4px;background:#1a1008;border:1px solid var(--border-dark)">
+        <img src="${h.img}" style="width:100%;height:100%;object-fit:cover;image-rendering:pixelated" onerror="this.style.opacity=0.2">
+      </div>
+      <div style="font-family:'Oswald',sans-serif;font-size:11px;color:#ffd080;margin-bottom:1px;line-height:1.2">${h.label}</div>
+      <div style="font-size:9px;color:${tierCol[h.tier] || '#a08060'};margin-bottom:6px">${tierLabel[h.tier] || ''}</div>
+      <button class="ctx-action-btn" onclick="goToBurglary()" style="margin-top:2px;width:100%;font-size:11px;padding:3px 6px">Burglarize</button>
+    </div>`;
+}
+
+function goToBurglary() {
+  if (!currentLocation || !selectedHouse) return;
+  const target = {
+    locId:  currentLocation.id,
+    type:   currentLocation.type,
+    label:  currentLocation.label,
+    method: 'burglary',
+    desc:   currentLocation.desc,
+    house:  selectedHouse,
+  };
+  sessionStorage.setItem('targetLocation', JSON.stringify(target));
+  window.location.href = 'crime.html';
+}
 
 function renderStorePanel() {
   const lp = document.getElementById('leftPanel');
@@ -1727,10 +1805,15 @@ function renderMapIcons() {
 
   // Init pools for any new locations that don't have one yet (SP only — server owns pools in MP)
   if (!gs.locationPools) gs.locationPools = {};
+  if (!gs.housePools) gs.housePools = {};
   if (!IS_MP) {
     const missingLocs = stealableLocDefs.filter(loc => !gs.locationPools[loc.id]);
     if (missingLocs.length) {
       initLocationPools(gs, missingLocs);
+    }
+    const missingHouseLocs = stealableLocDefs.filter(loc => loc.type === 'residential' && !gs.housePools[loc.id]);
+    if (missingHouseLocs.length) {
+      initHousePools(gs, missingHouseLocs);
     }
   }
 
@@ -1745,7 +1828,11 @@ function renderMapIcons() {
       msgEl.innerHTML += `<p>${ic.label} — ${ic.desc}</p>`;
       msgEl.scrollTop = msgEl.scrollHeight;
 
-      if (stealableTypes.includes(ic.type) && ic.type !== 'racing') {
+      if (ic.type === 'residential') {
+        const pool = (gs.housePools && gs.housePools[ic.id]) || [];
+        renderRightContext(null);
+        renderLeftPanel({ type: 'residential', data: { ic, pool } });
+      } else if (stealableTypes.includes(ic.type) && ic.type !== 'racing') {
         const pool = (gs.locationPools && gs.locationPools[ic.id]) || [];
         renderRightContext(null);
         renderLeftPanel({ type: 'stealPool', data: { ic, pool } });
