@@ -2,7 +2,17 @@
 
 ---
 
-## Session 34b — 2026-05-16 — Re-join moved to play.html; [x] wired
+## Session 34c — 2026-05-16 — Shared character bar in play.html
+
+### Changed — `play.html`
+- Added persistent `#charBar` between titlebar and tabs: portrait thumb (52×66), ‹/› nav, Name input, Profession buttons — visible on Browse and Create tabs, hidden when room panel shows
+- `updatePortrait()` now updates `#charPortraitImg` (char bar) instead of old `#portraitImg`
+- Create tab stripped of duplicate name/portrait/profession fields; now only shows Room Name, Visibility, Starting City; layout changed to single-column
+- `showRoomPanel()` hides `#charBar`
+
+---
+
+
 
 ### Changed — `play.html`
 - `✕` title bar button now links to `index.html`

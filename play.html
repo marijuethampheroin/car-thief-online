@@ -82,7 +82,22 @@ body::after, body::before { display: none !important; content: none !important; 
 .theme-opt { display:flex; align-items:center; gap:6px; width:100%; text-align:left; padding:5px 8px; font-size:11px; }
 .theme-swatch { width:14px; height:14px; border-radius:2px; border:1px solid var(--border-dark); flex-shrink:0; }
 
-/* Room panel */
+/* Character bar */
+.char-bar {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 12px; border-bottom: 1px solid var(--border-dark);
+  background: rgba(0,0,0,0.2);
+}
+.char-portrait-wrap { display: flex; flex-direction: column; align-items: center; gap: 3px; flex-shrink: 0; }
+.char-portrait { width: 52px; height: 66px; background: var(--bg-dark); border: 1px solid var(--border-dark); overflow: hidden; }
+.char-portrait img { width: 100%; height: 100%; object-fit: contain; object-position: center; mix-blend-mode: lighten; }
+.char-pic-nav { display: flex; gap: 2px; width: 100%; }
+.char-pic-nav .btn { flex: 1; padding: 2px 0; font-size: 11px; }
+.char-fields { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.char-name-row { display: flex; align-items: center; gap: 6px; }
+.char-name-row .grp-lbl { white-space: nowrap; }
+.char-prof-wrap { display: flex; flex-wrap: wrap; gap: 3px; }
+.char-prof-wrap .btn { font-size: 10px; padding: 2px 6px; }
 .room-name-display { font-family:'Oswald',sans-serif; font-size:20px; color:var(--border-light); letter-spacing:1px; }
 .room-code-row { display:flex; align-items:center; gap:10px; }
 .room-code-lbl { font-size:11px; color:var(--text-light); }
@@ -121,6 +136,34 @@ body::after, body::before { display: none !important; content: none !important; 
     <div class="win-btns"><button class="win-btn" onclick="window.location.href='index.html'">✕</button></div>
   </div>
 
+  <!-- ── CHARACTER BAR ── -->
+  <div class="char-bar" id="charBar">
+    <div class="char-portrait-wrap">
+      <div class="char-portrait"><img id="charPortraitImg" src="" alt=""></div>
+      <div class="char-pic-nav">
+        <button class="btn" onclick="navPic(-1)">‹</button>
+        <button class="btn" onclick="navPic(1)">›</button>
+      </div>
+    </div>
+    <div class="char-fields">
+      <div class="char-name-row">
+        <span class="grp-lbl">Name:</span>
+        <input class="text-input" id="pName" maxlength="16" style="flex:1">
+      </div>
+      <div>
+        <div class="grp-lbl" style="margin-bottom:3px">Profession:</div>
+        <div class="char-prof-wrap">
+          <button class="btn on" data-g="prof" data-v="actor"       onclick="pick(this)">Actor</button>
+          <button class="btn"    data-g="prof" data-v="shooter"     onclick="pick(this)">Shooter</button>
+          <button class="btn"    data-g="prof" data-v="thief"       onclick="pick(this)">Thief</button>
+          <button class="btn"    data-g="prof" data-v="driver"      onclick="pick(this)">Driver</button>
+          <button class="btn"    data-g="prof" data-v="locksmith"   onclick="pick(this)">Locksmith</button>
+          <button class="btn"    data-g="prof" data-v="electrician" onclick="pick(this)">Electrician</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ── TABS ── -->
   <div class="start-tabs" id="startTabs">
     <button class="start-tab on" id="tabBrowse" onclick="showTab('Browse')">BROWSE</button>
@@ -145,25 +188,8 @@ body::after, body::before { display: none !important; content: none !important; 
     </div>
   </div>
 
-  <!-- ── CREATE TAB ── -->
   <div class="tab-panel" id="panelCreate" style="display:none">
-    <div class="setup-body">
-      <div class="lft">
-        <div>
-          <div class="field-lbl">Your Name:</div>
-          <input class="text-input" id="pName" value="Player" style="width:140px">
-        </div>
-        <div class="portrait-box" id="portraitBox">
-          <img id="portraitImg" src="" alt=""
-               style="width:100%;height:100%;object-fit:contain;object-position:center;mix-blend-mode:lighten"
-               onerror="this.style.opacity='1'">
-        </div>
-        <div class="pic-lbl" id="picLbl">Picture: 1 (out of 18)</div>
-        <div class="pic-nav">
-          <button class="btn" onclick="navPic(-1)">‹</button>
-          <button class="btn" onclick="navPic(1)">›</button>
-        </div>
-      </div>
+    <div class="setup-body" style="grid-template-columns: 1fr">
       <div class="rgt">
         <div class="grp">
           <div class="grp-lbl">Room Name:</div>
@@ -173,15 +199,6 @@ body::after, body::before { display: none !important; content: none !important; 
           <div class="grp-lbl">Visibility:</div>
           <button class="btn opt on" data-g="vis" data-v="public"  onclick="pick(this)">Public</button>
           <button class="btn opt"    data-g="vis" data-v="private" onclick="pick(this)">Private</button>
-        </div>
-        <div class="grp">
-          <div class="grp-lbl">Profession:</div>
-          <button class="btn opt on" data-g="prof" data-v="actor"       onclick="pick(this)">Actor</button>
-          <button class="btn opt"    data-g="prof" data-v="shooter"     onclick="pick(this)">Shooter</button>
-          <button class="btn opt"    data-g="prof" data-v="thief"       onclick="pick(this)">Thief</button>
-          <button class="btn opt"    data-g="prof" data-v="driver"      onclick="pick(this)">Driver</button>
-          <button class="btn opt"    data-g="prof" data-v="locksmith"   onclick="pick(this)">Locksmith</button>
-          <button class="btn opt"    data-g="prof" data-v="electrician" onclick="pick(this)">Electrician</button>
         </div>
         <div class="grp">
           <div class="grp-lbl">Starting City:</div>
@@ -248,8 +265,11 @@ const PIC_TOTAL = picPaths.length;
 let picIdx = 1;
 
 function updatePortrait() {
-  document.getElementById('picLbl').textContent = `Picture: ${picIdx} (out of ${PIC_TOTAL})`;
-  document.getElementById('portraitImg').src    = picPaths[picIdx - 1];
+  const src = picPaths[picIdx - 1];
+  document.getElementById('charPortraitImg').src = src;
+  const old = document.getElementById('portraitImg');
+  if (old) old.src = src;
+  document.getElementById('picLbl') && (document.getElementById('picLbl').textContent = `Picture: ${picIdx} (out of ${PIC_TOTAL})`);
 }
 
 function navPic(d) {
@@ -504,7 +524,8 @@ function handleMsg(msg) {
 // ROOM PANEL
 // ---------------------------------------------------------------------------
 function showRoomPanel(roomName, code, players) {
-  document.getElementById('startTabs').style.display    = 'none';
+  document.getElementById('charBar').style.display          = 'none';
+  document.getElementById('startTabs').style.display        = 'none';
   document.getElementById('panelBrowse').style.display  = 'none';
   document.getElementById('panelCreate').style.display  = 'none';
   document.getElementById('startFooter').style.display  = 'none';
