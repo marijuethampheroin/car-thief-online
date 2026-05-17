@@ -265,21 +265,24 @@ function handleMessage(ws, playerId, roomCode, data) {
       if (room.players.size < 1) { send(ws, { type:'error', msg:'Need at least 1 player.' }); return; }
       room.started = true;
       // Build per-player states
+      const hostPlayer = room.players.get(room.hostId);
+      const hostCityId = hostPlayer?.startCityId || 'las_vegas';
       for (const [id, p] of room.players) {
         const state = logic.initState(p.name, p.portraitSrc, p.profession);
-        state.currentCity = p.startCityId || data.startCityId || 'las_vegas';
+        state.currentCity = p.startCityId || hostCityId;
         room.playerStates.set(id, state);
       }
       // Receive locDefs from host payload; fall back to defaults
       const locDefs = data.locDefs || [];
       initRoomPools(room, locDefs);
       startDayTimer(room);
-      // Send each player their own state + shared pools
+      // Send each player their own state + their own pools
       for (const [id, p] of room.players) {
+        const pState = room.playerStates.get(id);
         send(p.ws, {
           type: 'game_started',
-          state: room.playerStates.get(id),
-          locationPools: room.locationPools,
+          state: pState,
+          locationPools: pState.locationPools,
           locDefs: room.locDefs,
           players: playerList(room),
           nextDayAt: room.nextDayAt,
@@ -331,6 +334,29 @@ function handleMessage(ws, playerId, roomCode, data) {
       room.pendingClaims[uid] = { locId, vehicle, playerId };
       send(ws, { type:'steal_ack', locId, uid });
       send(ws, { type:'pool_update', locationPools: state.locationPools });
+      break;
+    }
+
+    // ── arrest ─────────────────────────────────────────────────────────────
+    // ── city_travel ────────────────────────────────────────────────────────
+    // Client has flown/driven to a new city. Update server-side state so
+    // reconnects and refreshes reflect the correct city.
+    case 'city_travel': {
+      if (!room || !room.started) return;
+      const state = room.playerStates.get(playerId);
+      if (state && data.cityId) {
+        state.currentCity = data.cityId;
+        // Init a fresh pool for this city if the player hasn't been here before
+        if (!state.locationPools) state.locationPools = {};
+        if (room.locDefs) {
+          for (const loc of room.locDefs) {
+            if (!state.locationPools[loc.id]) {
+              state.locationPools[loc.id] = _generatePool(loc.id, loc.type);
+            }
+          }
+        }
+        send(ws, { type:'state_update', state });
+      }
       break;
     }
 

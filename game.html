@@ -2099,6 +2099,7 @@ function mpHandleMsg(msg) {
       gs = msg.state;
       saveState(gs);
       renderHUD();
+      renderMapIcons();
       break;
 
     case 'steal_ack':
@@ -2113,6 +2114,10 @@ function mpHandleMsg(msg) {
       saveState(gs);
       renderHUD();
       renderMapIcons();
+      // Sync current city to server in case player travelled via airport.html
+      if (gs.currentCity && mpWs.readyState === 1) {
+        mpWs.send(JSON.stringify({ type: 'city_travel', cityId: gs.currentCity }));
+      }
       logMsg('Reconnected to game.');
       if (msg.nextDayAt) startDayCountdown(msg.nextDayAt);
       // Seed the player list from the server's response
