@@ -58,4 +58,4 @@ meters. Win/loss handled by resolveRaceWin/resolveRaceLoss. Navigates back to ma
 |------------|---------|-------------------------------------------------|
 | 2026-05-17 | all     | Status doc created after reading all classic files |
 | 2026-05-17 | classic_drive.html, classic_airport.html, classic_race.html | Fixed all game.html → main.html navigation links |
-| 2026-05-17 | classic_drive.html | Added IS_MP / MP_ID / MP_CODE definitions (were missing, caused throw) |
+| 2026-05-17 | main.html | Removed all multiplayer logic (IS_MP, mpWs, mpHandleMsg, WS block, MP branches in initMenu/skipDay/goToCrime) |

@@ -153,13 +153,8 @@ document.addEventListener('click', function(e) {
 });
 function initMenu() {
   const item = document.getElementById('menuItemExit');
-  if (IS_MP) {
-    item.textContent = 'Back to Lobby';
-    item.onclick = () => window.location.href = 'index.html';
-  } else {
-    item.textContent = 'New Game';
-    item.onclick = () => window.location.href = 'index.html';
-  }
+  item.textContent = 'New Game';
+  item.onclick = () => window.location.href = 'index.html';
   // Item drag mode toggle — wired after gs loads via initMenuDragToggle()
   const dragItem = document.getElementById('menuItemDragMode');
   dragItem.textContent = '→ Item drag: Move'; // placeholder until gs available
@@ -344,13 +339,6 @@ function renderContactsModal() {
   });
 }
 
-// ── MULTIPLAYER DETECTION ─────────────────────────────────────────────────────
-// If playerId + roomCode are in sessionStorage we're in a multiplayer session.
-// Single-player (direct file open) works as before — no WebSocket needed.
-const MP_ID   = sessionStorage.getItem('playerId');
-const MP_CODE = sessionStorage.getItem('roomCode');
-const IS_MP   = !!(MP_ID && MP_CODE);
-let mpWs      = null;
 initMenu();
 
 // Load game state (from game.js layer)
@@ -413,23 +401,17 @@ function renderHUD() {
 renderHUD();
 renderVehicleStorage();
 
-// ── SKIP DAY
-// In multiplayer the server advances the day — hide this button.
-// In single-player it still works as a test stub.
+// ── SKIP DAY ─────────────────────────────────────────────────────────────────
 const skipDayBtn = document.querySelector('.nav-btn[title="Skip one day"]');
-if (IS_MP) {
-  skipDayBtn.style.display = 'none';
-} else {
-  skipDayBtn.addEventListener('click', () => {
-    const result = advanceDay(gs, window._stealableLocDefs);
-    gs = result.state;
-    renderHUD();
-    renderMapIcons(); // refresh icons in case locations changed
-    const msgEl = document.getElementById('msgText');
-    msgEl.innerHTML += `<p>${result.msg}</p>`;
-    msgEl.scrollTop = msgEl.scrollHeight;
-  });
-}
+skipDayBtn.addEventListener('click', () => {
+  const result = advanceDay(gs, window._stealableLocDefs);
+  gs = result.state;
+  renderHUD();
+  renderMapIcons();
+  const msgEl = document.getElementById('msgText');
+  msgEl.innerHTML += `<p>${result.msg}</p>`;
+  msgEl.scrollTop = msgEl.scrollHeight;
+});
 
 // ── CHARACTER PANEL ───────────────────────────────────────────────────────────
 const portraitSrc = gs.portraitSrc;
@@ -918,12 +900,12 @@ function renderAirportPanel() {
       <div style="font-size:9px;color:var(--text-dim);margin-bottom:8px">${curCity.name}</div>
       <div style="margin-top:auto;display:flex;flex-direction:column;gap:5px">
         <button class="ctx-action-btn" style="background:#1a3a1a;color:#80e080;border-color:#2a5a2a"
-                onclick="window.location.href='airport.html'">
+                onclick="window.location.href='classic_airport.html'">
           ✈ Fly To City — $500
         </button>
         <button class="ctx-action-btn ${canDrive ? '' : 'disabled'}"
                 style="${canDrive ? 'background:#1a2a3a;color:#80c0e0;border-color:#2a4a5a' : 'opacity:0.4;pointer-events:none'}"
-                ${canDrive ? "onclick=\"window.location.href='drive.html'\"" : 'disabled'}>
+                ${canDrive ? "onclick=\"window.location.href='classic_drive.html'\"" : 'disabled'}>
           🚗 Drive To City — Free
         </button>
         ${!canDrive ? `<div style="font-size:9px;color:var(--text-dim);text-align:center">Need an active vehicle to drive</div>` : ''}
@@ -1397,7 +1379,7 @@ function goToRace() {
   if (!av || !selectedVehicle) return;
   initRace(gs, av, selectedVehicle);
   gs = loadState(); // pick up currentRace written by initRace
-  window.location.href = 'race.html';
+  window.location.href = 'classic_race.html';
 }
 
 function goToCrime() {
@@ -1411,21 +1393,8 @@ function goToCrime() {
     desc:    currentLocation.desc,
     vehicle: selectedVehicle,
   };
-
-  if (IS_MP && mpWs && mpWs.readyState === 1) {
-    // In multiplayer: claim the vehicle on the server first.
-    // Server removes it from the shared pool atomically — prevents two players
-    // stealing the same car. Navigate only on ack; show message on nack.
-    const stealBtn = document.querySelector('.ctx-action-btn');
-    if (stealBtn) { stealBtn.disabled = true; stealBtn.textContent = 'Claiming...'; }
-    mpWs.send(JSON.stringify({ type:'steal_claim', locId: target.locId, uid: selectedVehicle.uid }));
-    // Response handled in mpHandleMsg — sets sessionStorage and navigates on ack
-    sessionStorage.setItem('targetLocation', JSON.stringify(target));
-  } else {
-    // Single-player: navigate immediately
-    sessionStorage.setItem('targetLocation', JSON.stringify(target));
-    window.location.href = 'classic_crime.html';
-  }
+  sessionStorage.setItem('targetLocation', JSON.stringify(target));
+  window.location.href = 'classic_crime.html';
 }
 
 function sellActiveVehicle(avIdx) {
@@ -1558,7 +1527,7 @@ renderHideout();
 
 function driveToCity() {
   saveState(gs);
-  window.location.href = 'drive.html';
+  window.location.href = 'classic_drive.html';
 }
 
 // Delegated listener: clicking a vehicle slot in right context panel selects it
@@ -1924,135 +1893,10 @@ document.getElementById('leftPanel').addEventListener('click', e => {
   }
 });
 
-// ── MULTIPLAYER WEBSOCKET ─────────────────────────────────────────────────────
-// Connects only when IS_MP is true. Handles server-pushed events:
-//   day_advanced  — server timer fired; update state + HUD + pools
-//   pool_update   — another player stole a vehicle; refresh pools
-//   state_update  — server confirms a state change (buy/sell etc.)
-//   steal_ack     — our steal_claim was accepted; navigate to crime.html
-//   steal_nack    — our steal_claim was rejected (car already gone)
-//   game_over     — host ended the game; show final scores
-
-function mpHandleMsg(msg) {
-  switch (msg.type) {
-
-    case 'day_advanced':
-      gs = msg.state;
-      saveState(gs);
-      renderHUD();
-      // Refresh pools in case of daily turnover
-      if (msg.state.locationPools) {
-        gs.locationPools = msg.state.locationPools;
-      }
-      logMsg(`Day ${msg.day} — ${msg.msg}`);
-      break;
-
-    case 'pool_update':
-      // Another player claimed or server refreshed pools
-      gs.locationPools = msg.locationPools;
-      saveState(gs);
-      // If the player currently has a location selected, refresh the thumbnail slots
-      if (currentPool && currentLocation) {
-        const freshPool = gs.locationPools[currentLocation.id] || [];
-        currentPool = freshPool;
-        const thumbImgs = freshPool.map(v => ({ img: v.img, frameX: v.frameX || 0 }));
-        renderRightContext({ label: currentLocation.label, thumbImgs });
-        freshPool.forEach((v, i) => {
-          const slot = document.getElementById(`rightCtxSlot${i}`);
-          if (slot) { slot.dataset.poolIdx = String(i); slot.style.cursor = 'pointer'; }
-        });
-        // Clear slots beyond the new pool size
-        for (let i = freshPool.length; i < 6; i++) {
-          const slot = document.getElementById(`rightCtxSlot${i}`);
-          if (slot) { slot.innerHTML = ''; delete slot.dataset.poolIdx; }
-        }
-        // If selected vehicle was taken, clear selection
-        if (selectedVehicle && !freshPool.find(v => v.uid === selectedVehicle.uid)) {
-          selectedVehicle = null;
-          renderLeftPanel({ type: 'location', data: currentLocation });
-        }
-      }
-      break;
-
-    case 'state_update':
-      gs = msg.state;
-      saveState(gs);
-      renderHUD();
-      break;
-
-    case 'steal_ack':
-      // Server confirmed our claim — proceed to crime screen
-      window.location.href = 'classic_crime.html';
-      break;
-
-    case 'steal_nack':
-      // Someone else got there first
-      selectedVehicle = null;
-      // Re-enable any disabled steal button
-      const stealBtn = document.querySelector('.ctx-action-btn');
-      if (stealBtn) { stealBtn.disabled = false; stealBtn.textContent = currentLocation?.type === 'highway' ? 'Hijack' : 'Steal'; }
-      break;
-
-    case 'player_disconnected':
-      logMsg(`A player disconnected.`);
-      break;
-
-    case 'game_over': {
-      const rows = msg.scores.map((s, i) =>
-        `${i+1}. ${s.name} — $${s.score.toLocaleString()}`
-      ).join('\n');
-      logMsg('── GAME OVER ──');
-      msg.scores.forEach((s, i) => logMsg(`${i+1}. ${s.name}  Cash: $${s.cash.toLocaleString()}  Debt: $${s.debt.toLocaleString()}  Net: $${s.score.toLocaleString()}`));
-      break;
-    }
-
-    case 'race_challenge': {
-      const accept = confirm(`${msg.fromName} challenges you to a race with ${msg.vehicle?.name || 'their car'}!\n\nAccept?`);
-      mpWs.send(JSON.stringify({ type:'race_respond', accept }));
-      break;
-    }
-
-    case 'race_started':
-      // Both players navigated to race screen; server already updated gs.currentRace
-      gs.currentRace = msg.race;
-      saveState(gs);
-      window.location.href = 'race.html';
-      break;
-
-    case 'error':
-      logMsg('Server: ' + msg.msg);
-      break;
-  }
-}
-
 function logMsg(text) {
   const el = document.getElementById('msgText');
   el.innerHTML += `<p>${text}</p>`;
   el.scrollTop = el.scrollHeight;
-}
-
-if (IS_MP) {
-  const wsUrl = `ws://${location.hostname}:8080`;
-  mpWs = new WebSocket(wsUrl);
-
-  mpWs.onopen = () => {
-    const token = sessionStorage.getItem('fbToken');
-    if (!token) { window.location.href = 'auth.html'; return; }
-    // Authenticate first, then reconnect to restore server-side session
-    mpWs.send(JSON.stringify({ type:'auth', token }));
-  };
-
-  mpWs.onmessage = (e) => {
-    const msg = JSON.parse(e.data);
-    if (msg.type === 'auth_ok') {
-      mpWs.send(JSON.stringify({ type:'reconnect', code: MP_CODE, playerId: MP_ID }));
-      return;
-    }
-    try { mpHandleMsg(msg); } catch(err) { console.error('MP msg error:', err); }
-  };
-
-  mpWs.onclose = () => logMsg('Disconnected from server.');
-  mpWs.onerror = () => logMsg('WebSocket error — server may be down.');
 }
 </script>
 </body>
