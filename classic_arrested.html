@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Car Thief Online — Busted</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+body.arrested-screen {
+  align-items: center; justify-content: center;
+  background: #0a0505;
+}
+
+.arrested-window {
+  width: 420px;
+  background: var(--bg-dark);
+  border: 2px solid #8a0000;
+  box-shadow: 0 0 40px rgba(180,0,0,0.4), var(--raised);
+  display: flex; flex-direction: column;
+  font-family: 'Oswald', sans-serif;
+  animation: busted-in 0.4s cubic-bezier(0.19,1,0.22,1);
+}
+@keyframes busted-in {
+  from { transform: scale(0.88); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+
+/* -- Header -- */
+.arrested-hd {
+  background: linear-gradient(180deg, #8a0000 0%, #5a0000 100%);
+  padding: 14px 18px 12px;
+  display: flex; align-items: center; gap: 14px;
+  border-bottom: 2px solid #c00;
+}
+.arrested-portrait-wrap {
+  position: relative; flex-shrink: 0;
+}
+.arrested-portrait {
+  width: 64px; height: 64px;
+  border: 2px solid #c00;
+  overflow: hidden; background: #111;
+}
+.arrested-portrait img {
+  width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated;
+  filter: grayscale(60%) sepia(30%);
+}
+.arrested-badge {
+  position: absolute; bottom: -4px; right: -4px;
+  background: #c00; color: #fff;
+  font-size: 9px; font-family: 'Oswald', sans-serif; letter-spacing: 0.5px;
+  padding: 1px 4px; border: 1px solid #800;
+}
+.arrested-hd-text { flex: 1; }
+.arrested-title {
+  font-size: 28px; letter-spacing: 3px; color: #ff4444;
+  text-shadow: 0 0 12px rgba(255,0,0,0.6);
+  line-height: 1;
+}
+.arrested-subtitle {
+  font-size: 11px; color: rgba(255,180,180,0.7);
+  letter-spacing: 0.5px; margin-top: 3px;
+}
+.arrested-name {
+  font-size: 13px; color: #ffaaaa; margin-top: 5px; letter-spacing: 0.3px;
+}
+
+/* -- Body -- */
+.arrested-body { padding: 14px 18px; display: flex; flex-direction: column; gap: 10px; }
+
+.arrested-section-hd {
+  font-size: 10px; letter-spacing: 1px; color: var(--text-dim);
+  border-bottom: 1px solid var(--border-dark);
+  padding-bottom: 3px; margin-bottom: 4px;
+}
+
+/* Penalty rows */
+.penalty-row {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 12px; padding: 3px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.penalty-lbl { color: var(--text-dim); }
+.penalty-val { color: #ff8888; font-size: 13px; }
+.penalty-val.debt { color: #ff4444; }
+.penalty-val.ok   { color: var(--bar-green); }
+
+/* Seized items */
+.seized-list {
+  display: flex; flex-direction: column; gap: 4px;
+}
+.seized-item {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(180,0,0,0.1); border: 1px solid rgba(180,0,0,0.25);
+  padding: 3px 7px;
+}
+.seized-item img {
+  width: 24px; height: 24px; image-rendering: pixelated; object-fit: contain;
+}
+.seized-item-name { font-size: 11px; color: #ff9999; }
+.seized-none { font-size: 11px; color: var(--text-dim); font-style: italic; }
+
+/* Wanted stars */
+.wanted-row {
+  display: flex; align-items: center; gap: 8px;
+}
+.wanted-lbl { font-size: 11px; color: var(--text-dim); }
+.wanted-stars { display: flex; gap: 3px; }
+.wanted-star { font-size: 16px; color: #333; }
+.wanted-star.lit { color: #ffcc00; text-shadow: 0 0 6px rgba(255,200,0,0.6); }
+
+/* Footer */
+.arrested-footer {
+  padding: 10px 18px 14px;
+  display: flex; justify-content: flex-end;
+  border-top: 1px solid var(--border-dark);
+}
+</style>
+<link rel="manifest" href="/manifest.json">
+<script>if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');</script></head>
+<body class="arrested-screen">
+<script src="game.js"></script>
+<div class="arrested-window window">
+
+  <!-- Header: mugshot + BUSTED title -->
+  <div class="arrested-hd">
+    <div class="arrested-portrait-wrap">
+      <div class="arrested-portrait">
+        <img id="arrestPortrait" src="" alt="mugshot">
+      </div>
+      <div class="arrested-badge">ARREST #<span id="arrestCount">1</span></div>
+    </div>
+    <div class="arrested-hd-text">
+      <div class="arrested-title">BUSTED</div>
+      <div class="arrested-subtitle">LAS VEGAS POLICE DEPARTMENT</div>
+      <div class="arrested-name" id="arrestName"></div>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div class="arrested-body">
+
+    <!-- Penalties section -->
+    <div>
+      <div class="arrested-section-hd">CHARGES &amp; PENALTIES</div>
+      <div class="penalty-row">
+        <span class="penalty-lbl">Fine issued</span>
+        <span class="penalty-val" id="penFine">$0</span>
+      </div>
+      <div class="penalty-row" id="penDebtRow" style="display:none">
+        <span class="penalty-lbl">Added to debt (insufficient funds)</span>
+        <span class="penalty-val debt" id="penDebt">$0</span>
+      </div>
+      <div class="penalty-row">
+        <span class="penalty-lbl">Cash remaining</span>
+        <span class="penalty-val ok" id="penCash">$0</span>
+      </div>
+    </div>
+
+    <!-- Seized items -->
+    <div>
+      <div class="arrested-section-hd">ITEMS CONFISCATED</div>
+      <div class="seized-list" id="seizedList"></div>
+    </div>
+
+    <!-- Wanted level -->
+    <div>
+      <div class="arrested-section-hd">WANTED LEVEL</div>
+      <div class="wanted-row">
+        <span class="wanted-lbl">Heat:</span>
+        <div class="wanted-stars" id="wantedStars"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <div class="arrested-footer">
+    <button class="btn btn-go" onclick="window.location.href='game.html'">Back to the City</button>
+  </div>
+
+</div>
+<script>
+'use strict';
+
+const gs = loadState();
+if (!gs) { window.location.href = 'game.html'; }
+
+const penalty = JSON.parse(sessionStorage.getItem('arrestResult') || '{}');
+sessionStorage.removeItem('arrestResult');
+
+// Portrait + name
+document.getElementById('arrestPortrait').src = gs.portraitSrc || '';
+document.getElementById('arrestName').textContent = gs.playerName || '';
+document.getElementById('arrestCount').textContent = gs.arrests || 1;
+
+// Fine + debt
+document.getElementById('penFine').textContent = '$' + ((penalty.fine || 0)).toLocaleString();
+document.getElementById('penCash').textContent = '$' + (gs.cash || 0).toLocaleString();
+if (penalty.debtIncrease > 0) {
+  document.getElementById('penDebtRow').style.display = '';
+  document.getElementById('penDebt').textContent = '$' + penalty.debtIncrease.toLocaleString();
+}
+
+// Seized items
+const seizedEl = document.getElementById('seizedList');
+const seized = penalty.seized || [];
+if (!seized.length) {
+  seizedEl.innerHTML = '<div class="seized-none">No items confiscated.</div>';
+} else {
+  for (const item of seized) {
+    const div = document.createElement('div');
+    div.className = 'seized-item';
+    const imgSrc = `Graphics/items_medium/STOOL${String(item.index).padStart(2,'0')}.bmp`;
+    div.innerHTML = `<img src="${imgSrc}" alt="${item.label}">
+                     <span class="seized-item-name">${item.label}</span>`;
+    seizedEl.appendChild(div);
+  }
+}
+
+// Wanted stars
+const starsEl = document.getElementById('wantedStars');
+const wantedLevel = gs.wantedLevel || 0;
+for (let i = 1; i <= 5; i++) {
+  const s = document.createElement('span');
+  s.className = 'wanted-star' + (i <= wantedLevel ? ' lit' : '');
+  s.textContent = '?';
+  starsEl.appendChild(s);
+}
+</script>
+</body>
+</html>
+

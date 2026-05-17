@@ -268,6 +268,32 @@ function getValidActions(locType, ss, playerGs) {
     }
     acts.push('case_the_area');
     acts.push('flee');
+  } else if (locType === 'bank') {
+    if (!ss.teller_approached) {
+      acts.push('bank_give_note');
+      acts.push('bank_announce');
+    } else if (!ss.teller_complied) {
+      acts.push('bank_give_note');
+      acts.push('bank_announce');
+      if (hasGun) acts.push('bank_demand_teller');
+    } else if (!ss.teller_cash_taken) {
+      acts.push('bank_demand_teller');
+    } else if (!ss.manager_found) {
+      acts.push('bank_find_manager');
+      acts.push('bank_leave');
+    } else if (!ss.manager_complied) {
+      acts.push('bank_lead_to_vault');
+      acts.push('bank_leave');
+    } else if (!ss.vault_open) {
+      acts.push('bank_demand_vault');
+      acts.push('bank_leave');
+    } else if (ss.bags_remaining > 0) {
+      acts.push('bank_fill_bag');
+      acts.push('bank_leave');
+    } else {
+      acts.push('bank_leave');
+    }
+    acts.push('flee');
   } else {
     if (!ss.doorOpen) {
       acts.push('case_the_area');

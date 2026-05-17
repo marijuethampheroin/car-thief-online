@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Car Thief Online � Drive to City</title>
+<link rel="stylesheet" href="styles.css">
+<script src="game.js"></script>
+<style>
+  .airport-wrap { display:flex; height:100%; gap:0; }
+
+  /* Left panel */
+  .ap-left {
+    width: 140px; flex-shrink: 0;
+    display: flex; flex-direction: column;
+    padding: 6px;
+    border-right: 1px solid var(--border-dark);
+    background: var(--bg-panel);
+    gap: 6px;
+  }
+  .ap-vehicle-thumb {
+    width: 100%; height: 52px;
+    background: var(--bg-dark);
+    border: 1px solid var(--border-dark);
+    overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ap-airport-name {
+    font-family: 'Oswald', sans-serif; font-size: 11px;
+    color: var(--text-light); line-height: 1.3;
+  }
+  .ap-airport-name span { display:block; font-size:9px; color:var(--text-dim); }
+  .ap-action-btns { display:flex; flex-direction:column; gap:5px; margin-top:auto; }
+  .ap-btn {
+    padding: 5px 8px;
+    font-family: 'Oswald', sans-serif; font-size: 12px; letter-spacing: 0.5px;
+    cursor: pointer; border: 1px solid var(--border-dark);
+    background: var(--bg-dark); color: var(--text-light); text-align: center;
+  }
+  .ap-btn:hover { background: var(--accent); color: #1a0e00; }
+  .ap-btn:disabled { opacity: 0.4; pointer-events: none; }
+  .ap-btn-driveto { background: #1a3a1a; color: #80e080; border-color: #2a5a2a; }
+  .ap-btn-driveto:hover { background: #2a5a2a; color: #c0ffc0; }
+  .ap-btn-driveto:disabled { background: var(--bg-dark); color: var(--text-dim); }
+
+  /* Center map */
+  .ap-map-wrap {
+    flex: 1; position: relative; overflow: hidden; background: var(--bg-dark);
+  }
+  .ap-map-img {
+    width: 100%; height: 100%;
+    object-fit: contain; object-position: center;
+    display: block; opacity: 0.85;
+  }
+  .ap-city-dot {
+    position: absolute; transform: translate(-50%, -50%);
+    cursor: pointer; z-index: 2;
+  }
+  .ap-city-dot .dot {
+    width: 12px; height: 12px; border-radius: 50%;
+    background: rgba(180,120,40,0.85); border: 2px solid #ffd080;
+    box-shadow: 0 0 6px rgba(255,180,0,0.5);
+    transition: background 0.15s, transform 0.15s;
+  }
+  .ap-city-dot:hover .dot { background: #ffd080; transform: scale(1.25); }
+  .ap-city-dot.selected .dot { background: #80e080; border-color: #c0ffc0; box-shadow: 0 0 8px rgba(0,255,100,0.6); }
+  .ap-city-dot.current-city .dot { background: #e08040; border-color: #ffaa40; cursor: not-allowed; }
+  .ap-city-dot.current-city:hover .dot { transform: none; }
+  .ap-city-label {
+    position: absolute; left: 50%; top: 14px; transform: translateX(-50%);
+    white-space: nowrap; font-family: 'Oswald', sans-serif; font-size: 9px;
+    color: #ffd080; text-shadow: 0 1px 3px #000, 0 0 6px #000; pointer-events: none;
+  }
+  .ap-city-dot.current-city .ap-city-label { color: #ffaa40; }
+  .ap-city-dot.selected .ap-city-label { color: #c0ffc0; }
+
+  /* Bottom bar */
+  .ap-bottom {
+    display: flex; align-items: center; gap: 10px; padding: 5px 10px;
+    background: var(--bg-panel); border-top: 1px solid var(--border-dark);
+    font-size: 11px; color: var(--text-dim);
+  }
+  .ap-bottom .ap-status { flex: 1; font-family: 'Oswald', sans-serif; color: var(--text-light); }
+  .ap-bottom .ap-err   { color: #e08080; }
+  .ap-cancel-btn {
+    padding: 4px 14px; font-family: 'Oswald', sans-serif; font-size: 11px;
+    cursor: pointer; border: 1px solid var(--border-dark);
+    background: var(--bg-dark); color: var(--text-dim);
+  }
+  .ap-cancel-btn:hover { color: var(--text-light); background: var(--bg-panel); }
+
+  /* Stat mini-row */
+  .mini-stat { display:flex; gap:3px; align-items:center; font-size:9px; margin-bottom:2px; }
+  .mini-stat span:first-child { width:24px; color:#a08060; font-family:'Oswald',sans-serif; }
+  .mini-stat-track { flex:1; height:4px; background:#2a1800; border-radius:2px; }
+  .mini-stat-fill  { height:100%; background:#5080e0; border-radius:2px; }
+  .mini-stat span:last-child { width:16px; text-align:right; color:var(--text-light); }
+</style>
+<link rel="manifest" href="/manifest.json">
+<script>if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');</script></head>
+<body class="main-screen">
+<div class="window game-window" style="display:flex;flex-direction:column">
+
+  <!-- HUD -->
+  <div class="hud">
+    <div class="hud-row">
+      <span>Day <span class="hud-val" id="day">1</span></span>
+      <span class="hud-sep">|</span>
+      <span>Debt: <span class="hud-val debt-val" id="debt">$0</span></span>
+      <div class="hud-spacer"></div>
+      <div class="menu-wrap" id="menuWrap">
+        <button class="menu-btn" id="menuBtn" onclick="toggleMenu()">Menu ?</button>
+        <div class="menu-dropdown" id="menuDropdown" style="display:none">
+          <div class="menu-item" id="menuItemExit"></div>
+        </div>
+      </div>
+    </div>
+    <div class="hud-row">
+      <span>Cash: <span class="hud-val" id="cash">$0</span></span>
+      <span class="hud-sep">|</span>
+      <span>Daily Costs: <span class="hud-val" id="daily">$0</span></span>
+    </div>
+  </div>
+
+  <!-- BODY -->
+  <div style="flex:1;overflow:hidden">
+    <div class="airport-wrap">
+
+      <!-- LEFT -->
+      <div class="ap-left">
+        <div class="ap-vehicle-thumb" id="vehicleThumb">
+          <div style="color:var(--text-dim);font-size:9px;font-family:'Oswald',sans-serif;opacity:0.5">NO VEHICLE</div>
+        </div>
+        <div class="ap-airport-name" id="vehicleLabel">
+          No vehicle
+          <span id="vehicleSub" style="color:#e08060">Need a car to drive</span>
+        </div>
+        <div id="travelCostRow" style="display:none">
+          <div style="font-size:9px;color:var(--text-dim);margin-top:2px">Travel cost:</div>
+          <div style="font-size:10px;color:#80e080;font-family:'Oswald',sans-serif">Free</div>
+        </div>
+        <div id="condRow" style="display:none">
+          <div class="mini-stat">
+            <span>Cond</span>
+            <div class="mini-stat-track"><div class="mini-stat-fill" id="condFill" style="width:0%;background:#e05020"></div></div>
+            <span id="condVal">�</span>
+          </div>
+        </div>
+        <div class="ap-action-btns">
+          <button class="ap-btn ap-btn-driveto" id="driveToBtn" disabled>Drive to...</button>
+        </div>
+      </div>
+
+      <!-- CENTER: USA map -->
+      <div class="ap-map-wrap" id="apMapWrap">
+        <img src="Graphics/UI_elements/map_usa.bmp"
+             onerror="this.style.opacity='0.1'" alt="USA Map"
+             style="width:100%;height:100%;object-fit:contain;object-position:center;opacity:0.85">
+        <!-- city dots injected by JS -->
+      </div>
+
+    </div>
+  </div>
+
+  <!-- BOTTOM BAR -->
+  <div class="ap-bottom">
+    <div class="ap-status" id="apStatus">Pick a destination city.</div>
+    <button class="ap-cancel-btn" onclick="window.location.href='game.html'">Cancel</button>
+  </div>
+
+</div>
+
+<script>
+let gs = loadState();
+if (!gs) { window.location.href = 'game.html'; }
+
+function toggleMenu() {
+  const d = document.getElementById('menuDropdown');
+  d.style.display = d.style.display === 'none' ? 'block' : 'none';
+}
+document.addEventListener('click', function(e) {
+  const wrap = document.getElementById('menuWrap');
+  if (wrap && !wrap.contains(e.target)) {
+    document.getElementById('menuDropdown').style.display = 'none';
+  }
+});
+function initMenu() {
+  const item = document.getElementById('menuItemExit');
+  if (IS_MP) {
+    item.textContent = 'Back to Lobby';
+    item.onclick = () => window.location.href = 'index.html';
+  } else {
+    item.textContent = 'New Game';
+    item.onclick = () => window.location.href = 'index.html';
+  }
+}
+initMenu();
+if (!gs.currentCity) { gs.currentCity = 'las_vegas'; saveState(gs); }
+if (!gs.cities)      { initCities(gs); saveState(gs); }
+
+// HUD
+document.getElementById('day').textContent   = gs.day;
+document.getElementById('debt').textContent  = '$' + gs.debt.toLocaleString();
+document.getElementById('cash').textContent  = '$' + gs.cash.toLocaleString();
+document.getElementById('daily').textContent = '$' + gs.dailyCosts.toLocaleString();
+
+// Left panel: show active vehicle
+const av = (gs.activeVehicles && gs.activeVehicles.find(v => v)) || null;
+if (av) {
+  const sc = 0.625, sw = Math.round(640 * sc), sh = Math.round(48 * sc);
+  const fx = Math.round((av.frameX || 0) * sc);
+  const thumb = document.getElementById('vehicleThumb');
+  thumb.innerHTML = `<div style="width:100%;height:100%;background:url('${av.img}') -${fx}px 50%/${sw}px ${sh}px no-repeat"></div>`;
+  document.getElementById('vehicleLabel').firstChild.textContent = av.name;
+  document.getElementById('vehicleSub').textContent = av.spec || av.body || '';
+  document.getElementById('vehicleSub').style.color = '';
+  document.getElementById('travelCostRow').style.display = 'block';
+  const cond = av.condition || 50;
+  document.getElementById('condRow').style.display = 'block';
+  document.getElementById('condFill').style.width   = cond + '%';
+  document.getElementById('condVal').textContent    = cond;
+}
+
+const curCity = CITIES.find(c => c.id === gs.currentCity) || CITIES[0];
+
+let selectedCityId = null;
+
+function updateDriveBtn() {
+  const btn = document.getElementById('driveToBtn');
+  const statusEl = document.getElementById('apStatus');
+
+  if (!av) {
+    btn.disabled = true;
+    statusEl.innerHTML = '<span class="ap-err">You need an active vehicle to drive.</span>';
+    return;
+  }
+  if (!selectedCityId) {
+    btn.disabled = true;
+    statusEl.textContent = 'Pick a destination city.';
+    return;
+  }
+  const dest = CITIES.find(c => c.id === selectedCityId);
+  btn.disabled = false;
+  statusEl.innerHTML = `Drive to <strong style="color:#ffd080">${dest.name}</strong> � <span style="color:#80e080">free</span>`;
+}
+
+// Render city dots
+const mapWrap = document.getElementById('apMapWrap');
+CITIES.forEach(city => {
+  const dot = document.createElement('div');
+  dot.className = 'ap-city-dot' + (city.id === gs.currentCity ? ' current-city' : '');
+  dot.style.left = city.dotX + '%';
+  dot.style.top  = city.dotY + '%';
+  dot.innerHTML  = `<div class="dot"></div><div class="ap-city-label">${city.name.split(',')[0]}</div>`;
+
+  if (city.id !== gs.currentCity) {
+    dot.addEventListener('click', () => {
+      mapWrap.querySelectorAll('.ap-city-dot.selected').forEach(d => d.classList.remove('selected'));
+      selectedCityId = (selectedCityId === city.id) ? null : city.id;
+      if (selectedCityId) dot.classList.add('selected');
+      updateDriveBtn();
+    });
+  }
+  mapWrap.appendChild(dot);
+});
+
+updateDriveBtn();
+
+document.getElementById('driveToBtn').addEventListener('click', () => {
+  if (!selectedCityId || !av) return;
+  const result = driveToCity(gs, selectedCityId);
+  if (!result.ok) {
+    document.getElementById('apStatus').innerHTML = `<span class="ap-err">${result.msg}</span>`;
+    return;
+  }
+  gs = loadState();
+  window.location.href = 'game.html';
+});
+</script>
+</body>
+</html>
+
