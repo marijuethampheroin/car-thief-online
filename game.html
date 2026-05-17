@@ -2059,14 +2059,17 @@ document.getElementById('leftPanel').addEventListener('click', e => {
 function mpHandleMsg(msg) {
   switch (msg.type) {
 
-    case 'day_advanced':
+    case 'day_advanced': {
+      const _cities = gs.cities;
       gs = msg.state;
+      if (_cities) gs.cities = _cities;
       saveState(gs);
       renderHUD();
       renderMapIcons();
       logMsg(`Day ${msg.day} — ${msg.msg}`);
       if (msg.nextDayAt) startDayCountdown(msg.nextDayAt);
       break;
+    }
 
     case 'pool_update':
       // Another player claimed or server refreshed pools
@@ -2095,12 +2098,15 @@ function mpHandleMsg(msg) {
       }
       break;
 
-    case 'state_update':
+    case 'state_update': {
+      const _cities = gs.cities;
       gs = msg.state;
-      saveState(gs);
+      if (_cities) gs.cities = _cities;
       renderHUD();
       renderMapIcons();
+      saveState(gs);
       break;
+    }
 
     case 'steal_ack':
       // Server confirmed our claim — proceed to crime screen
@@ -2110,18 +2116,14 @@ function mpHandleMsg(msg) {
     case 'reconnected': {
       const localCity   = gs.currentCity;
       const localCities = gs.cities;
-      console.log('[reconnected] localCities before overwrite:', localCities ? Object.keys(localCities) : null);
       gs = msg.state;
       if (msg.locationPools) gs.locationPools = msg.locationPools;
       if (msg.locDefs) gs.mpLocDefs = msg.locDefs;
       if (localCity)   gs.currentCity = localCity;
       if (localCities) gs.cities = localCities;
-      console.log('[reconnected] gs.cities after restore:', gs.cities ? Object.keys(gs.cities) : null);
       renderHUD();
       renderMapIcons();
-      console.log('[reconnected] gs.cities after renderMapIcons:', gs.cities ? Object.keys(gs.cities) : null);
       saveState(gs);
-      console.log('[reconnected] saved. gameState cities check:', JSON.parse(sessionStorage.getItem('gameState'))?.cities ? 'present' : 'MISSING');
       // Sync current city to server in case player travelled via airport.html
       if (gs.currentCity && mpWs.readyState === 1) {
         mpWs.send(JSON.stringify({ type: 'city_travel', cityId: gs.currentCity }));
