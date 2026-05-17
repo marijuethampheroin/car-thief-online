@@ -2108,18 +2108,20 @@ function mpHandleMsg(msg) {
       break;
 
     case 'reconnected': {
-      // Preserve the locally-saved city — airport.html writes it to sessionStorage
-      // before navigating, so it's more current than the server's state.
       const localCity   = gs.currentCity;
       const localCities = gs.cities;
+      console.log('[reconnected] localCities before overwrite:', localCities ? Object.keys(localCities) : null);
       gs = msg.state;
       if (msg.locationPools) gs.locationPools = msg.locationPools;
       if (msg.locDefs) gs.mpLocDefs = msg.locDefs;
       if (localCity)   gs.currentCity = localCity;
       if (localCities) gs.cities = localCities;
+      console.log('[reconnected] gs.cities after restore:', gs.cities ? Object.keys(gs.cities) : null);
       renderHUD();
-      renderMapIcons(); // may regenerate gs.cities if missing
-      saveState(gs);    // save after renderMapIcons so cities are included
+      renderMapIcons();
+      console.log('[reconnected] gs.cities after renderMapIcons:', gs.cities ? Object.keys(gs.cities) : null);
+      saveState(gs);
+      console.log('[reconnected] saved. gameState cities check:', JSON.parse(sessionStorage.getItem('gameState'))?.cities ? 'present' : 'MISSING');
       // Sync current city to server in case player travelled via airport.html
       if (gs.currentCity && mpWs.readyState === 1) {
         mpWs.send(JSON.stringify({ type: 'city_travel', cityId: gs.currentCity }));
