@@ -586,16 +586,29 @@ function mpHandleMsg(msg){
 }
 
 if(IS_MP){
-  const wsUrl = `ws://${location.hostname}:8080`;
+  const wsUrl = location.hostname === 'localhost' ? 'ws://localhost:8080' : 'wss://car-thief-online-production.up.railway.app';
   mpWs = new WebSocket(wsUrl);
   mpWs.onopen = () => {
-    mpWs.send(JSON.stringify({ type:'reconnect', code: MP_CODE, playerId: MP_ID }));
-    if (vehData && vehData.uid && loc.locId) {
-      mpWs.send(JSON.stringify({ type:'steal_claim', locId: loc.locId, uid: vehData.uid }));
-    }
+    const token = sessionStorage.getItem('fbToken');
+    if (!token) { window.location.href = 'auth.html'; return; }
+    mpWs.send(JSON.stringify({ type:'auth', token }));
   };
   mpWs.onmessage = (e) => {
-    try{ mpHandleMsg(JSON.parse(e.data)); } catch(err){ console.error('MP msg error:',err); }
+    try{
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'auth_ok') {
+        mpWs.send(JSON.stringify({ type:'reconnect', code: MP_CODE, playerId: MP_ID }));
+        return;
+      }
+      if (msg.type === 'reconnected') {
+        // Session restored — send the steal claim now
+        if (vehData && vehData.uid && loc.locId) {
+          mpWs.send(JSON.stringify({ type:'steal_claim', locId: loc.locId, uid: vehData.uid }));
+        }
+        return;
+      }
+      mpHandleMsg(msg);
+    } catch(err){ console.error('MP msg error:',err); }
   };
   mpWs.onerror = () => logMsg('WebSocket error.','bad');
   mpWs.onclose = () => logMsg('Disconnected from server.','sys');
