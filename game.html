@@ -2224,6 +2224,13 @@ function mpHandleMsg(msg) {
       const _cities = gs.cities;
       gs = msg.state;
       if (_cities) gs.cities = _cities;
+      // Migrate legacy activeVehicle → activeVehicles[]
+      if (gs.activeVehicle !== undefined) {
+        if (!Array.isArray(gs.activeVehicles)) gs.activeVehicles = [];
+        if (gs.activeVehicle && !gs.activeVehicles[0]) gs.activeVehicles[0] = gs.activeVehicle;
+        delete gs.activeVehicle;
+      }
+      if (!Array.isArray(gs.activeVehicles)) gs.activeVehicles = [];
       applyServerCityLayouts(msg.cityLayouts);
       renderHUD();
       renderMapIcons();

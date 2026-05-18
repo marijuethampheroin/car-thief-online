@@ -396,8 +396,12 @@ function handleMessage(ws, playerId, roomCode, data) {
       const vehicle = data.vehicle;
       // Remove from pendingClaims — vehicle is now permanently gone from pool
       if (room.pendingClaims && data.uid) delete room.pendingClaims[data.uid];
-      if (!state.activeVehicle) {
-        state.activeVehicle = vehicle;
+      if (!Array.isArray(state.activeVehicles)) state.activeVehicles = [];
+      const emptySlot = state.activeVehicles.findIndex(v => !v);
+      if (emptySlot !== -1) {
+        state.activeVehicles[emptySlot] = vehicle;
+      } else if (state.activeVehicles.length < 2) {
+        state.activeVehicles.push(vehicle);
       } else {
         if (!state.garage) state.garage = [];
         if (state.garage.length < 6) state.garage.push(vehicle);
