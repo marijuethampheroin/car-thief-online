@@ -495,7 +495,11 @@ function handleMessage(ws, playerId, roomCode, data) {
       let vehicle = null;
       if (state.activeVehicle && state.activeVehicle.uid === uid) {
         vehicle = state.activeVehicle; state.activeVehicle = null;
-      } else {
+      } else if (Array.isArray(state.activeVehicles)) {
+        const avIdx = state.activeVehicles.findIndex(v => v && v.uid === uid);
+        if (avIdx !== -1) { vehicle = state.activeVehicles[avIdx]; state.activeVehicles[avIdx] = null; }
+      }
+      if (!vehicle) {
         const idx = (state.garage || []).findIndex(v => v.uid === uid);
         if (idx !== -1) { vehicle = state.garage[idx]; state.garage.splice(idx, 1); }
       }

@@ -908,6 +908,30 @@ function renderNpcView(data) {
     </div>`;
 }
 
+// ── Sell active vehicle ───────────────────────────────────────────────────────
+function sellActiveVehicle(avIdx) {
+  avIdx = (avIdx === '' || avIdx === undefined) ? 0 : parseInt(avIdx);
+  const vehicle = gs.activeVehicles && gs.activeVehicles[avIdx];
+  if (!vehicle) return;
+  const salePrice = Math.floor(vehicle.price * ((vehicle.condition || 75) / 100));
+
+  if (IS_MP) {
+    if (mpWs && mpWs.readyState === 1) {
+      mpWs.send(JSON.stringify({ type: 'sell_vehicle', uid: vehicle.uid, toDealer: false }));
+      logMsg(`Sold ${vehicle.name} for $${salePrice.toLocaleString()}.`);
+      document.getElementById('leftPanel').innerHTML = '';
+    }
+  } else {
+    gs.activeVehicles[avIdx] = null;
+    gs.cash += salePrice;
+    saveState(gs);
+    renderHUD();
+    renderActiveTeam();
+    document.getElementById('leftPanel').innerHTML = '';
+    logMsg(`Sold ${vehicle.name} for $${salePrice.toLocaleString()}.`);
+  }
+}
+
 // ── Sub-renderer: Bank ───────────────────────────────────────────────────────
 let bankActiveTab = 'account'; // 'account' | 'loan' | 'rob'
 
