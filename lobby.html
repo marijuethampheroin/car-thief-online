@@ -386,6 +386,8 @@ function handleMsg(msg) {
       // Save everything the client needs, then navigate
       sessionStorage.setItem('playerId',      myId);
       sessionStorage.setItem('roomCode',      myCode);
+      localStorage.setItem('playerId',        myId);
+      localStorage.setItem('roomCode',        myCode);
       sessionStorage.setItem('isHost',        isHost ? '1' : '0');
       msg.state.locationPools = msg.locationPools;
       sessionStorage.setItem('gameState',     JSON.stringify(msg.state));

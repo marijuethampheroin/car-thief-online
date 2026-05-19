@@ -2,6 +2,18 @@
 
 ---
 
+## Session — 2026-05-18 — Player Reconnect Persistence
+
+### Fixed — `lobby.html`
+- `playerId` and `roomCode` now written to both `sessionStorage` and `localStorage` on `game_started`
+- Previously only written to `sessionStorage`, which is wiped when a tab is closed — players could not rejoin after closing the browser
+- `game.html` already reads from `localStorage` as fallback and sends a `reconnect` message on load; server-side reconnect handler was already complete — this was the only missing piece
+
+### Notes
+- `localStorage` persists until manually cleared; stale values from a finished game will cause a harmless `Session not found` error on next visit, which the existing error handler catches
+
+---
+
 ## Session — 2026-05-18 — MP Vehicle Sell + Auth Fixes
 
 ### Fixed — `auth.html` / `.gitignore`
