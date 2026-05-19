@@ -2,12 +2,25 @@
 
 ---
 
+## Session — 2026-05-18 — Mid-Game Join
+
+### Fixed — `server.js`
+- Removed `room.started` rejection from `join_room` handler
+- Mid-game joins now initialize a fresh `playerState` and location pools, then send `game_started` directly — client path through `lobby.html` → `game.html` works unchanged
+- Other players are notified via `player_joined` broadcast
+
+---
+
 ## Session — 2026-05-18 — Player Reconnect Persistence
 
 ### Fixed — `lobby.html`
 - `playerId` and `roomCode` now written to both `sessionStorage` and `localStorage` on `game_started`
 - Previously only written to `sessionStorage`, which is wiped when a tab is closed — players could not rejoin after closing the browser
 - `game.html` already reads from `localStorage` as fallback and sends a `reconnect` message on load; server-side reconnect handler was already complete — this was the only missing piece
+
+### Fixed — `game.html`
+- `reconnected` handler no longer preserves stale `localCity`/`localCities` from an empty `sessionStorage`
+- After a tab-close rejoin, server state now wins entirely; local city is only kept if `sessionStorage` had a live `gameState` (same-tab reconnect)
 
 ### Notes
 - `localStorage` persists until manually cleared; stale values from a finished game will cause a harmless `Session not found` error on next visit, which the existing error handler catches

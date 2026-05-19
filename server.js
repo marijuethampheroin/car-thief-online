@@ -690,7 +690,6 @@ wss.on('connection', (ws, req) => {
       if (!verifiedUid) { send(ws, { type:'error', msg:'Not authenticated.' }); return; }
       const room = rooms.get(data.code);
       if (!room) { send(ws, { type:'error', msg:'Room not found.' }); return; }
-      if (room.started) { send(ws, { type:'error', msg:'Game already in progress.' }); return; }
       playerId = makePlayerId();
       roomCode = data.code;
       room.players.set(playerId, {
@@ -698,6 +697,25 @@ wss.on('connection', (ws, req) => {
         profession: data.profession || 'thief', startCityId: data.startCityId || 'las_vegas',
         connected: true, uid: verifiedUid,
       });
+      // Mid-game join — initialize state and send game_started directly
+      if (room.started) {
+        const state = logic.initState(data.name, data.portraitSrc || '', data.profession || 'thief');
+        state.currentCity = data.startCityId || 'las_vegas';
+        room.playerStates.set(playerId, state);
+        if (room.locDefs) {
+          state.locationPools = {};
+          for (const loc of room.locDefs) {
+            state.locationPools[loc.id] = _generatePool(loc.id, loc.type);
+          }
+        }
+        getOrCreateCityLayout(room, state.currentCity);
+        browsers.delete(ws);
+        send(ws, { type:'game_started', state, locationPools: state.locationPools, locDefs: room.locDefs, cityLayouts: room.cityLayouts, players: playerList(room), nextDayAt: room.nextDayAt });
+        broadcast(room, { type:'player_joined', player: { id:playerId, name:data.name, portraitSrc:data.portraitSrc||'', profession:data.profession||'thief', connected:true } });
+        pushRoomList();
+        console.log(`[${roomCode}] ${data.name} (${playerId}) joined mid-game.`);
+        return;
+      }
       browsers.delete(ws);
       send(ws, { type:'room_joined', code: roomCode, playerId, roomName: room.roomName, players: playerList(room) });
       broadcast(room, { type:'player_joined', player: { id:playerId, name:data.name, portraitSrc:data.portraitSrc||'', profession:data.profession||'thief' } });

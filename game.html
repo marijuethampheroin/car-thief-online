@@ -2244,8 +2244,9 @@ function mpHandleMsg(msg) {
       break;
 
     case 'reconnected': {
-      const localCity   = gs.currentCity;
-      const localCities = gs.cities;
+      const hadLiveSession = !!sessionStorage.getItem('gameState');
+      const localCity   = hadLiveSession ? gs.currentCity : null;
+      const localCities = hadLiveSession ? gs.cities : null;
       gs = msg.state;
       if (msg.locationPools) gs.locationPools = msg.locationPools;
       if (msg.locDefs) gs.mpLocDefs = msg.locDefs;
