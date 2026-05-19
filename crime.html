@@ -601,10 +601,8 @@ if(IS_MP){
         return;
       }
       if (msg.type === 'reconnected') {
-        // Session restored — send the steal claim now
-        if (vehData && vehData.uid && loc.locId) {
-          mpWs.send(JSON.stringify({ type:'steal_claim', locId: loc.locId, uid: vehData.uid }));
-        }
+        // Session restored — steal_claim was already sent (and ack'd) in game.html
+        // before navigating here. Do not re-send; vehicle is already in pendingClaims.
         return;
       }
       mpHandleMsg(msg);
