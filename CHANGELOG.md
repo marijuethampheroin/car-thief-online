@@ -2,6 +2,44 @@
 
 ---
 
+## Session — 2026-05-18 — MP Vehicle Sell + Auth Fixes
+
+### Fixed — `auth.html` / `.gitignore`
+- `firebase-config.js` was in `.gitignore`, causing 404 on GitHub Pages and breaking login
+- Inlined `firebaseConfig` directly into `auth.html`; removed exclusion from `.gitignore`
+
+### Fixed — `game.html`
+- Added `sellActiveVehicle()` function with MP support — sends `sell_vehicle` WS message in MP, applies locally in SP
+- Replaced original `sellActiveVehicle` (no MP handling, no `activeVehicles` guard) with guarded version
+- Removed duplicate `sellActiveVehicle` that was accidentally inserted before Bank section
+- Added `activeVehicles` migration guard to `state_update` handler in `mpHandleMsg`
+
+### Fixed — `server.js`
+- `steal_success` handler: changed from storing vehicle in `state.activeVehicle` to `state.activeVehicles[]`
+- `sell_vehicle` handler: added check for `state.activeVehicles[]` in addition to `state.activeVehicle`
+
+### Fixed — `crime.html`
+- WS URL was hardcoded to `ws://${location.hostname}:8080` — fails on HTTPS (GitHub Pages) with mixed content error
+- Replaced with correct `wss://car-thief-online-production.up.railway.app` for production, `ws://localhost:8080` for local
+- Added auth token flow (auth → reconnected → steal_claim) to match `game.html`
+
+### Open issues
+- `steal_nack` fires immediately on crime scene arrival — vehicle may be double-claimed or uid mismatch; unresolved
+- `sw.js` and `manifest.json` returning 404 on GitHub Pages (service worker paths wrong) — not urgent
+
+---
+
+
+
+### Fixed — `auth.html`
+- Inlined `firebaseConfig` object directly into `auth.html` (was loaded from external `firebase-config.js`)
+- `firebase-config.js` was excluded from git via `.gitignore`, causing 404 on GitHub Pages and breaking all login/register
+
+### Changed — `.gitignore`
+- Removed `firebase-config.js` exclusion (Firebase client keys are public by design; security enforced by Firebase rules)
+
+---
+
 ## Session 37 — 2026-05-17 — Residential Burglary
 
 ### Added — `items.json`
@@ -1027,3 +1065,4 @@ New cases added to `resolveAction()`:
 - `.map-wrap` changed from `position:relative` container to `display:flex; flex-direction:column`
 - `.map-canvas` added: takes `flex:1`, carries the overlay `::after` and `position:relative/overflow:hidden` that `.map-wrap` previously had
 - Added inline MP panel CSS block: `.mp-inline`, `.mp-players`, `.mp-player-entry`, `.mp-player-name`, `.mp-player-status`, `.mp-status-dot`, `.mp-chat`, `.mp-log`, `.mp-chat-input-row`, `.mp-chat-input`, `.mp-chat-send`
+
