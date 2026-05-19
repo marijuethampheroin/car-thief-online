@@ -137,6 +137,10 @@ const MP_CODE = sessionStorage.getItem('roomCode') || localStorage.getItem('room
 const IS_MP   = !!(MP_ID && MP_CODE);
 let mpWs      = null;
 
+let gs=loadState();
+if(!gs)window.location.href="game.html";
+let policeLevel = Math.min(100, (gs.policeReadiness || 0) + 20);
+
 let turnNum=1,sceneOver=false,selectedAct=null;
 
 // ── SCENE STATE ───────────────────────────────────────────────────────────────
