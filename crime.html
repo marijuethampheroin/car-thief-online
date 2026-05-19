@@ -136,12 +136,8 @@ const MP_ID   = sessionStorage.getItem('playerId') || localStorage.getItem('play
 const MP_CODE = sessionStorage.getItem('roomCode') || localStorage.getItem('roomCode');
 const IS_MP   = !!(MP_ID && MP_CODE);
 let mpWs      = null;
-let mpPending = false;   // true while waiting for a server response
 
 let turnNum=1,sceneOver=false,selectedAct=null;
-let gs=loadState();
-if(!gs)window.location.href="game.html";
-let policeLevel = Math.min(100, (gs.policeReadiness || 0) + 20);
 
 // ── SCENE STATE ───────────────────────────────────────────────────────────────
 let sceneState = {
@@ -476,14 +472,11 @@ function endScene(result){
 }
 
 function doTurn(){
-  if(sceneOver||mpPending)return;
+  if(sceneOver)return;
   if(!selectedAct){logMsg("Select an activity first.","bad");return;}
-  if(IS_MP && mpWs && mpWs.readyState===1){
-    mpPending=true;
-    document.getElementById("turnBtn").disabled=true;
-    mpWs.send(JSON.stringify({ type:'do_action', action:selectedAct, vehicle }));
-    return;
-  }
+  // Resolution is always local — MP only contacts server on final outcomes
+  // (steal_success, arrest) via endScene(). do_action / logic.js path removed
+  // because server has no sceneState and can't drive the sequential crime loop.
   _applyTurnResult(resolveAction(selectedAct,gs,vehicle,sceneState));
 }
 
@@ -550,14 +543,6 @@ function mpHandleMsg(msg){
       sceneOver = true;
       document.getElementById('turnBtn').disabled = true;
       setTimeout(() => window.location.href = 'game.html', 2000);
-      break;
-
-    case 'action_result':
-      gs = msg.state;
-      saveState(gs);
-      mpPending = false;
-      document.getElementById("turnBtn").disabled = false;
-      _applyTurnResult(msg.result);
       break;
 
     case 'arrest_result':
